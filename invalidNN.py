@@ -1,4 +1,5 @@
 import tensorflow as tf
+from random import shuffle
 
 
 def mul(*args):
@@ -8,82 +9,150 @@ def mul(*args):
     return k
 
 
-class layer:  # 얘는 객체 속성 repr? 하면 layer(layer : 'FC', activate_function : 'sigmoid' ~~~) 이렇게 나오게, 컨볼이랑 엪씨 분리 고려
-    def __init__(self, layer: str, activate_function: str, units: int = None, dropout: int = None, padding:str = None, filter_shape: list = None, filters :int = None, stride:list = None, pooling = None):
+class layer:  # 얘는 객체 속성 repr? 하면 layer(layer : 'FC', activate_function : 'sigmoid' ~~~) 이렇게 나오게
+    def __init__(self, layer: str, activate_function: str, dropout: int = None):
         # 범용 속성
         self.layer = layer
         self.activate = activate_function
-        self.units = units
         self.dropout = dropout
 
-        # 레이어별 속성
-        if layer == 'FC':
-            self.weight = self.bias = None
 
-        elif layer == 'Conv':
-            self.filter = self.bias = None
-            self.filter_shape = filter_shape
-            self.filters = filters
-            self.stride = stride
-            self.padding = padding
+class FullyConnected(layer):
+    def __init__(self, activate_function, units, dropout = 0):
+        super().__init__('FC', activate_function, dropout)
 
-        elif layer == 'Pooling':
-            self.ksize = [1] + filter_shape + [1]
-            self.stride = stride
-            self.padding = padding
-            self.pooling = pooling
+        self.weight = self.bias = None
+        self.units = units
+
+
+class Conv(layer):
+    def __init__(self, activate_function, padding, stride, filters, filter_shape, dropout = 0):
+        super().__init__('Conv', activate_function, dropout)
+
+        self.filter = self.bias = None
+        self.filter_shape = filter_shape
+        self.channels = filters
+
+        self.padding = padding
+        self.stride = stride
+
+
+class Pooling(layer):
+    def __init__(self, pooling, stride, padding, size, activate_function = None, dropout = 0):
+        super().__init__('Pooling', activate_function, dropout)
+
+        self.pooling = pooling
+        self.stride = stride
+        self.padding = padding
+
+        self.size = size
+        self.channels = 0
 
 
 class NeuralNetwork:
-    def __init__(self, layers, input_units):
-        # 초기화, 모델 생성도
-
-        activate_functions = {
-            'ReLU' : tf.nn.relu,
-            'Sigmoid' : tf.nn.sigmoid,
-            'Softmax' : tf.nn.softmax,
+    def __init__(self, layers, input_units): # 신경망 검사, 가중치/필터 초기화, 그래프 작성
+        activate_function = {
+            'sigmoid' : tf.nn.sigmoid,
+            'relu' : tf.nn.relu,
+            'softmax' : tf.nn.softmax,
+            'tanh' : tf.nn.tanh,
             None : lambda x: x
         }
+        if isinstance(input_units, int):
+            input_units = [input_units]
+        self.input_data = tf.placeholder(tf.float32, [None, *input_units])
+        batch_size = self.input_data.shape[0]
+        flow = self.input_data
 
-        x = tf.placeholder(tf.float32, shape=[None, mul(*input_units)])
-
-        batch_size = x.shape[0]
-
-        for layer, l in enumerate(layers):
-            if layer.layer == 'FC':  # 앞에 놈이 컨볼이면 리쉐잎잉
+        for l, layer in enumerate(layers):
+            if isinstance(layer, FullyConnected):
+                # 가중치 초기화
                 layer.weight = tf.Variable(
-                    tf.random_normal(shape=[layer.units, input_units if l == 0 else layers[l-1].units],
-                                     mean=tf.sqrt(layer.units))
-                )
-                layer.bias = tf.Variable([-1])  #
+                    tf.random_normal([input_units[0] if l == 0 else layers[l-1].units, layer.units])
+                )/tf.sqrt(float(input_units[0] if l == 0 else layers[l-1].units))  # Xaiver..?
 
-                if l != 0 and (layer[l-1] == 'Conv' or layer[l-1] == 'Pooling'):
-                    network = tf.reshape(network, [-1, mul(*network.shape)/batch_size])
+                layer.bias = tf.Variable(tf.random_normal([1]))
 
-                network = tf.matmul(layer.weight, x if l == 0 else network) + layer.bias
+                # 그래프 작성
+                if isinstance(layers[l-1], Conv) or isinstance(layers[l-1], Pooling):
+                    flow = tf.reshape(flow, [-1, mul(layers[l-1].shape)/batch_size])
 
-                network = activate_functions[layer.activate](network)
+                flow = activate_function[layer.activate](tf.matmul(flow, layer.weight) + layer.bias)
 
-            if layer.layer is 'Conv':
+            elif isinstance(layer, Conv):
+                # 필터 초기화
                 layer.filter = tf.Variable(
-                    tf.random_normal(shape=[*layer.filter_shape, input_units[-1], layer.filters],
-                                     mean=0.1)
+                    tf.random_normal([*layer.filter_shape, input_units[-1] if l ==0 else layers[l-1].channels, layer.channels])
                 )
-                layer.bias = tf.Variable([-1, *input_units])
+                layer.bias = tf.Variable(tf.random_normal([layer.channels]))
 
-                if l == 0:
-                    network = tf.reshape(x, [-1, *input_units])
+                # 그래프 작성
+                flow = activate_function[layer.activate](
+                    tf.nn.conv2d(network, layer.filter, layer.stride, layer.padding) + layer.bias
+                )
 
-                network = tf.nn.conv2d(input=network, filter=layer.filter, strides=layer.stride, padding=layer.padding)
+            elif isinstance(layer, Pooling):
+                layer.channels = layers[l-1].channels
 
-                network = activate_functions[layer.activate](network)
+                pooling = tf.nn.avg_pool if layer.pooling == 'avg' else tf.nn.max_pool
+                flow = activate_function[layer.activate](pooling(flow, layer.size, layer.stride, layer.padding))
 
-            if layer.layer is 'Pooling':
-                pooling = {
-                    'avg' : tf.nn.avg_pool,
-                    'max' : tf.nn.max_pool
-                }
+        self.output = flow
+        self.saver = tf.train.Saver()
 
-                network = pooling[layer.pooling](network, layer.ksize, layer.strides, layer.padding)
+    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, epoch = 1):
+        object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][1])])
 
-                network = activate_functions[layer.activate](network)
+        if loss_function == 'least-square':
+            loss = tf.reduce_mean(tf.square(object_output - self.output))
+        elif loss_function == 'cross-entopy':
+            loss = -tf.reduce_sum(object_output*tf.log(self.output))
+
+        if optimizer == 'gradient_descent':
+            train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+        elif optimizer == 'adam':
+            train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+
+        init = tf.global_variables_initializer()
+
+        with tf.Session() as sess:
+            sess.run(init)
+
+            for _ in range(epoch):
+                shuffle(training_dataset)
+                dataset_length = len(training_dataset)
+
+                for b in range(round(dataset_length/batch_size)):
+                    batch = training_dataset[b*batch_size : (b+1)*batch_size]
+
+                    x_batch = [b[0] for b in batch]
+                    y_batch = [b[1] for b in batch]
+
+                    sess.run(train_step,
+                             feed_dict={self.input_data: x_batch, object_output: y_batch})
+
+            for layer in layers:
+                if not isinstance(layer, Pooling):
+                    if isinstance(layer, FullyConnected):
+                        layer.weight = sess.run(layer.weight)
+                    elif isinstance(layer, Conv):
+                        layer.filter = sess.run(layer.filter)
+                    layer.bias = sess.run(bias)
+
+    def query(self, input_data):
+        pass # 신경망 질의
+
+    def __getitem__(self, item):
+        pass
+
+
+if __name__ == '__main__':
+    main()
+
+def main():
+    sample_network = [
+        FullyConnected('Sigmoid', 200),
+        FullyConnected('Softmax', 10)
+    ]
+
+    testAI = NeuralNetwork(sample_network, 784)
