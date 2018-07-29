@@ -63,6 +63,7 @@ class NeuralNetwork:
         self.input_data = tf.placeholder(tf.float32, [None, *input_units])
         batch_size = self.input_data.shape[0]
         flow = self.input_data
+        self.layers = layers
 
         for l, layer in enumerate(layers):
             if isinstance(layer, FullyConnected):
@@ -98,61 +99,58 @@ class NeuralNetwork:
                 flow = activate_function[layer.activate](pooling(flow, layer.size, layer.stride, layer.padding))
 
         self.output = flow
-        self.saver = tf.train.Saver()
 
     def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, epoch = 1):
         object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][1])])
-
+        # 오차함수 정의
         if loss_function == 'least-square':
             loss = tf.reduce_mean(tf.square(object_output - self.output))
         elif loss_function == 'cross-entopy':
             loss = -tf.reduce_sum(object_output*tf.log(self.output))
-
+        # 옵티마이저 정의
         if optimizer == 'gradient_descent':
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         elif optimizer == 'adam':
             train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-
+        # 변수 초기화 옵티마이저
         init = tf.global_variables_initializer()
 
+        # 신경망 학습
         with tf.Session() as sess:
             sess.run(init)
 
             for _ in range(epoch):
+                # 데이터세트 섞기
                 shuffle(training_dataset)
                 dataset_length = len(training_dataset)
 
+                # 배치 사이즈만큼 나눠서 학습
                 for b in range(round(dataset_length/batch_size)):
                     batch = training_dataset[b*batch_size : (b+1)*batch_size]
 
-                    x_batch = [b[0] for b in batch]
-                    y_batch = [b[1] for b in batch]
+                    x_batch = [i[0] for i in batch]
+                    y_batch = [i[1] for i in batch]
 
                     sess.run(train_step,
                              feed_dict={self.input_data: x_batch, object_output: y_batch})
 
-            for layer in layers:
+            for layer in self.layers:
                 if not isinstance(layer, Pooling):
                     if isinstance(layer, FullyConnected):
                         layer.weight = sess.run(layer.weight)
                     elif isinstance(layer, Conv):
                         layer.filter = sess.run(layer.filter)
-                    layer.bias = sess.run(bias)
+                    layer.bias = sess.run(layer.bias)
 
     def query(self, input_data):
-        pass # 신경망 질의
+        # 질의
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            sess.run(init)
+            result = sess.run(self.output, feed_dict={self.input_data: input_data})
+        return result
 
     def __getitem__(self, item):
         pass
 
 
-if __name__ == '__main__':
-    main()
-
-def main():
-    sample_network = [
-        FullyConnected('Sigmoid', 200),
-        FullyConnected('Softmax', 10)
-    ]
-
-    testAI = NeuralNetwork(sample_network, 784)

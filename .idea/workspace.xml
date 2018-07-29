@@ -14,8 +14,8 @@
       <file leaf-file-name="test.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-242">
-              <caret line="1" column="11" lean-forward="true" selection-start-line="1" selection-start-column="11" selection-end-line="1" selection-end-column="11" />
+            <state relative-caret-position="449">
+              <caret line="39" column="7" selection-start-line="39" selection-start-column="7" selection-end-line="39" selection-end-column="7" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -26,21 +26,19 @@
       <file leaf-file-name="invalidNN.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/invalidNN.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="296">
-              <caret line="102" column="74" selection-start-line="102" selection-start-column="74" selection-end-line="102" selection-end-column="74" />
+            <state relative-caret-position="274">
+              <caret line="148" column="35" selection-start-line="148" selection-start-column="35" selection-end-line="148" selection-end-column="35" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
+                <element signature="e#46#98#0" />
                 <element signature="e#202#394#0" />
                 <element signature="e#430#614#0" />
                 <element signature="e#640#965#0" />
                 <element signature="e#994#1301#0" />
+                <element signature="e#1426#3491#0" />
                 <element signature="e#4333#4516#0" />
-                <element signature="e#1927#3478#0" />
-                <element signature="e#1976#2589#0" />
                 <element signature="e#2702#3177#0" />
                 <element signature="e#6049#6287#0" />
-                <element signature="e#3604#4995#0" />
-                <element signature="e#4262#4995#0" />
                 <element signature="e#5732#5736#0" />
               </folding>
             </state>
@@ -82,8 +80,8 @@
       <list>
         <option value="$PROJECT_DIR$/ㅇㅇ.py" />
         <option value="$PROJECT_DIR$/NeuralNetwork" />
-        <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/lol.py" />
+        <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/invalidNN.py" />
       </list>
     </option>
@@ -128,7 +126,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.lol">
+  <component name="RunManager" selected="Python.test">
     <configuration name="ㅇㅇ" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="InvalidNN" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -190,8 +188,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.lol" />
         <item itemvalue="Python.test" />
+        <item itemvalue="Python.lol" />
         <item itemvalue="Python.ㅇㅇ" />
       </list>
     </recent_temporary>
@@ -213,12 +211,12 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.14114584" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14114584" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Python Console" order="7" />
-      <window_info anchor="bottom" id="Run" order="2" visible="true" weight="0.3287234" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.3287234" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="7" />
       <window_info id="Favorites" order="2" side_tool="true" />
@@ -249,7 +247,7 @@
           <option name="timeStamp" value="8" />
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="20" />
+      <option name="time" value="23" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
@@ -269,17 +267,15 @@
           <caret line="155" column="70" lean-forward="true" selection-start-line="155" selection-start-column="70" selection-end-line="155" selection-end-column="70" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#46#98#0" />
             <element signature="e#202#394#0" />
             <element signature="e#430#614#0" />
             <element signature="e#640#965#0" />
             <element signature="e#994#1301#0" />
+            <element signature="e#1426#3491#0" />
             <element signature="e#4333#4516#0" />
-            <element signature="e#1927#3478#0" />
-            <element signature="e#1976#2589#0" />
             <element signature="e#2702#3177#0" />
             <element signature="e#6049#6287#0" />
-            <element signature="e#3604#4995#0" />
-            <element signature="e#4262#4995#0" />
             <element signature="e#5732#5736#0" />
           </folding>
         </state>
@@ -297,17 +293,15 @@
         <state>
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#46#98#0" />
             <element signature="e#202#394#0" />
             <element signature="e#430#614#0" />
             <element signature="e#640#965#0" />
             <element signature="e#994#1301#0" />
+            <element signature="e#1426#3491#0" />
             <element signature="e#4333#4516#0" />
-            <element signature="e#1927#3478#0" />
-            <element signature="e#1976#2589#0" />
             <element signature="e#2702#3177#0" />
             <element signature="e#6049#6287#0" />
-            <element signature="e#3604#4995#0" />
-            <element signature="e#4262#4995#0" />
             <element signature="e#5732#5736#0" />
           </folding>
         </state>
@@ -395,10 +389,17 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://D:/Programming/Anaconda/envs/tensorflow/Lib/site-packages/tensorflow/python/client/session.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="193">
+          <caret line="899" selection-start-line="899" selection-end-line="899" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-242">
-          <caret line="1" column="11" lean-forward="true" selection-start-line="1" selection-start-column="11" selection-end-line="1" selection-end-column="11" />
+        <state relative-caret-position="449">
+          <caret line="39" column="7" selection-start-line="39" selection-start-column="7" selection-end-line="39" selection-end-column="7" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
           </folding>
@@ -414,21 +415,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/invalidNN.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="296">
-          <caret line="102" column="74" selection-start-line="102" selection-start-column="74" selection-end-line="102" selection-end-column="74" />
+        <state relative-caret-position="274">
+          <caret line="148" column="35" selection-start-line="148" selection-start-column="35" selection-end-line="148" selection-end-column="35" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#46#98#0" />
             <element signature="e#202#394#0" />
             <element signature="e#430#614#0" />
             <element signature="e#640#965#0" />
             <element signature="e#994#1301#0" />
+            <element signature="e#1426#3491#0" />
             <element signature="e#4333#4516#0" />
-            <element signature="e#1927#3478#0" />
-            <element signature="e#1976#2589#0" />
             <element signature="e#2702#3177#0" />
             <element signature="e#6049#6287#0" />
-            <element signature="e#3604#4995#0" />
-            <element signature="e#4262#4995#0" />
             <element signature="e#5732#5736#0" />
           </folding>
         </state>
