@@ -19,7 +19,7 @@ class layer:  # 얘는 객체 속성 repr? 하면 layer(layer : 'FC', activate_f
 
 class FullyConnected(layer):
     def __init__(self, activate_function, units, dropout = 0):
-        super().__init__('FC', activate_function, dropout)
+        super().__init__('FullyConnected', activate_function, dropout)
 
         self.weight = self.bias = None
         self.units = units
@@ -107,11 +107,13 @@ class NeuralNetwork:
             loss = tf.reduce_mean(tf.square(object_output - self.output))
         elif loss_function == 'cross-entopy':
             loss = -tf.reduce_sum(object_output*tf.log(self.output))
+
         # 옵티마이저 정의
-        if optimizer == 'gradient_descent':
+        if optimizer == 'gradient-descent':
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         elif optimizer == 'adam':
             train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+
         # 변수 초기화 옵티마이저
         init = tf.global_variables_initializer()
 
@@ -120,10 +122,9 @@ class NeuralNetwork:
             sess.run(init)
 
             for _ in range(epoch):
+                '''
                 # 데이터세트 섞기
-                shuffle(training_dataset)
-                dataset_length = len(training_dataset)
-
+                a = self.layers[0].weight
                 # 배치 사이즈만큼 나눠서 학습
                 for b in range(round(dataset_length/batch_size)):
                     batch = training_dataset[b*batch_size : (b+1)*batch_size]
@@ -131,8 +132,13 @@ class NeuralNetwork:
                     x_batch = [i[0] for i in batch]
                     y_batch = [i[1] for i in batch]
 
-                    sess.run(train_step,
-                             feed_dict={self.input_data: x_batch, object_output: y_batch})
+                    # 왜 오차가 줄어들지 않는가?
+                '''
+                x_batch = [i[0] for i in training_dataset]
+                y_batch = [i[1] for i in training_dataset]
+
+                sess.run(train_step,
+                         feed_dict={self.input_data: x_batch, object_output: y_batch})  # 오차가 줄어들지 않는다!
 
             for layer in self.layers:
                 if not isinstance(layer, Pooling):
@@ -144,10 +150,10 @@ class NeuralNetwork:
 
     def query(self, input_data):
         # 질의
-        init = tf.global_variables_initializer()
         with tf.Session() as sess:
-            sess.run(init)
             result = sess.run(self.output, feed_dict={self.input_data: input_data})
+            # 쿼리하는 경우에는 초기화를 변수의 값으로 하게 해보자
+            # 그래프에 텐서변수로 저장된듯, 위 걸로 해보자 아니다 세이버는 어떰?
         return result
 
     def __getitem__(self, item):

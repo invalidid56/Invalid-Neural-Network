@@ -23,7 +23,6 @@ def preprocess(dataset):
     return dataset
 
 training_data = preprocess(training_data)
-print(training_data[0])
 preprocess(test_data)
 
 mnist_network = [
@@ -34,7 +33,7 @@ mnist_network = [
 AlphaGO = inv.NeuralNetwork(mnist_network, input_units=784)
 
 
-AlphaGO.train(training_data, 10, 'cross-entopy', 'gradient_descent', 0.01, epoch=5)
+AlphaGO.train(training_data, 100, 'least-square', 'gradient-descent', 0.01, epoch=1)
 
 print(AlphaGO.query([training_data[0][0]]))
 print([training_data[0][1]])
