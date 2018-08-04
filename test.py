@@ -36,5 +36,4 @@ AlphaGO = inv.NeuralNetwork(mnist_network, input_units=784)
 AlphaGO.train(training_data, 100, 'least-square', 'gradient-descent', 0.01, epoch=1)
 
 print(AlphaGO.query([training_data[0][0]]))
-print([training_data[0][1]])
 

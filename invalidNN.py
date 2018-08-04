@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.contrib as tfc
 from random import shuffle
 
 
@@ -21,7 +22,6 @@ class FullyConnected(layer):
     def __init__(self, activate_function, units, dropout = 0):
         super().__init__('FullyConnected', activate_function, dropout)
 
-        self.weight = self.bias = None
         self.units = units
 
 
@@ -29,7 +29,6 @@ class Conv(layer):
     def __init__(self, activate_function, padding, stride, filters, filter_shape, dropout = 0):
         super().__init__('Conv', activate_function, dropout)
 
-        self.filter = self.bias = None
         self.filter_shape = filter_shape
         self.channels = filters
 
@@ -67,18 +66,20 @@ class NeuralNetwork:
 
         for l, layer in enumerate(layers):
             if isinstance(layer, FullyConnected):
-                # 가중치 초기화
-                layer.weight = tf.Variable(
-                    tf.random_normal([input_units[0] if l == 0 else layers[l-1].units, layer.units])
-                )/tf.sqrt(float(input_units[0] if l == 0 else layers[l-1].units))  # Xaiver..?
-
-                layer.bias = tf.Variable(tf.random_normal([1]))
+                # 초기화 오퍼레이터, 정규화 오퍼레이터 정의
+                init = tfc.layers.xavier_initializer()  # 확장 시에 선택 파라미터에 다른 오퍼레이터 추가
+                norm = None  # 확장 시에 추가
 
                 # 그래프 작성
                 if isinstance(layers[l-1], Conv) or isinstance(layers[l-1], Pooling):
                     flow = tf.reshape(flow, [-1, mul(layers[l-1].shape)/batch_size])
 
-                flow = activate_function[layer.activate](tf.matmul(flow, layer.weight) + layer.bias)
+                flow = tfc.layers.fully_connected(
+                    inputs = flow,
+                    num_outputs = layer.units,
+                    activation_fn = activate_function[layer.activate],
+                    weights_initializer= init
+                )
 
             elif isinstance(layer, Conv):
                 # 필터 초기화
@@ -139,14 +140,7 @@ class NeuralNetwork:
 
                 sess.run(train_step,
                          feed_dict={self.input_data: x_batch, object_output: y_batch})  # 오차가 줄어들지 않는다!
-
-            for layer in self.layers:
-                if not isinstance(layer, Pooling):
-                    if isinstance(layer, FullyConnected):
-                        layer.weight = sess.run(layer.weight)
-                    elif isinstance(layer, Conv):
-                        layer.filter = sess.run(layer.filter)
-                    layer.bias = sess.run(layer.bias)
+                print(sess.run(loss, feed_dict={self.input_data: x_batch, object_output: y_batch}))
 
     def query(self, input_data):
         # 질의
