@@ -118,14 +118,17 @@ class NeuralNetwork:
         # 변수 초기화 옵티마이저
         init = tf.global_variables_initializer()
 
+        # 변수 저장 옵티마이저
+        self.saver = tf.train.Saver()
+
         # 신경망 학습
         with tf.Session() as sess:
             sess.run(init)
 
             for _ in range(epoch):
-                '''
                 # 데이터세트 섞기
-                a = self.layers[0].weight
+                dataset_length = len(training_dataset)
+
                 # 배치 사이즈만큼 나눠서 학습
                 for b in range(round(dataset_length/batch_size)):
                     batch = training_dataset[b*batch_size : (b+1)*batch_size]
@@ -133,21 +136,20 @@ class NeuralNetwork:
                     x_batch = [i[0] for i in batch]
                     y_batch = [i[1] for i in batch]
 
-                    # 왜 오차가 줄어들지 않는가?
-                '''
-                x_batch = [i[0] for i in training_dataset]
-                y_batch = [i[1] for i in training_dataset]
+                    sess.run(train_step,
+                            feed_dict={self.input_data: x_batch, object_output: y_batch})
 
-                sess.run(train_step,
-                         feed_dict={self.input_data: x_batch, object_output: y_batch})  # 오차가 줄어들지 않는다!
-                print(sess.run(loss, feed_dict={self.input_data: x_batch, object_output: y_batch}))
+            print(sess.run(self.output, feed_dict={self.input_data: [training_dataset[0][0]]}))
+
+            save_path = self.saver.save(sess, "C:\Temp\model.ckpt")
+            print("Model Saved")
+
 
     def query(self, input_data):
         # 질의
         with tf.Session() as sess:
-            result = sess.run(self.output, feed_dict={self.input_data: input_data})
-            # 쿼리하는 경우에는 초기화를 변수의 값으로 하게 해보자
-            # 그래프에 텐서변수로 저장된듯, 위 걸로 해보자 아니다 세이버는 어떰?
+            self.saver.restore(sess, "C:\Temp\model.ckpt")
+            result = sess.run(self.output, feed_dict={self.input_data: [input_data]})
         return result
 
     def __getitem__(self, item):

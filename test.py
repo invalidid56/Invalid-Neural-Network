@@ -5,7 +5,7 @@ with gzip.open("mnist_train.gz", 'r') as f:
     training_data = [x.decode('utf8').strip() for x in f.readlines()]
     f.close()
 
-with gzip.open("mnist_train.gz", 'r') as f:
+with gzip.open("mnist_test.gz", 'r') as f:
     test_data = [x.decode('utf8').strip() for x in f.readlines()]
     f.close()
 
@@ -33,7 +33,4 @@ mnist_network = [
 AlphaGO = inv.NeuralNetwork(mnist_network, input_units=784)
 
 
-AlphaGO.train(training_data, 100, 'least-square', 'gradient-descent', 0.01, epoch=1)
-
-print(AlphaGO.query([training_data[0][0]]))
-
+AlphaGO.train(training_data, 10, 'least-square', 'gradient-descent', 0.01)
