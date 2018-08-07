@@ -81,24 +81,6 @@ class NeuralNetwork:
                     weights_initializer= init
                 )
 
-            elif isinstance(layer, Conv):
-                # 필터 초기화
-                layer.filter = tf.Variable(
-                    tf.random_normal([*layer.filter_shape, input_units[-1] if l ==0 else layers[l-1].channels, layer.channels])
-                )
-                layer.bias = tf.Variable(tf.random_normal([layer.channels]))
-
-                # 그래프 작성
-                flow = activate_function[layer.activate](
-                    tf.nn.conv2d(network, layer.filter, layer.stride, layer.padding) + layer.bias
-                )
-
-            elif isinstance(layer, Pooling):
-                layer.channels = layers[l-1].channels
-
-                pooling = tf.nn.avg_pool if layer.pooling == 'avg' else tf.nn.max_pool
-                flow = activate_function[layer.activate](pooling(flow, layer.size, layer.stride, layer.padding))
-
         self.output = flow
 
     def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, epoch = 1):
@@ -126,22 +108,21 @@ class NeuralNetwork:
             sess.run(init)
 
             for _ in range(epoch):
-                # 데이터세트 섞기
                 dataset_length = len(training_dataset)
 
-                # 배치 사이즈만큼 나눠서 학습
                 for b in range(round(dataset_length/batch_size)):
                     batch = training_dataset[b*batch_size : (b+1)*batch_size]
 
                     x_batch = [i[0] for i in batch]
                     y_batch = [i[1] for i in batch]
 
-                    sess.run(train_step,
-                            feed_dict={self.input_data: x_batch, object_output: y_batch})
+                    sess.run(train_step, feed_dict={self.input_data: x_batch, object_output: y_batch})
 
-            print(sess.run(self.output, feed_dict={self.input_data: [training_dataset[0][0]]}))
+            print(sess.run(self.output, feed_dict={self.input_data: [x_batch[0]]}))
+            print(y_batch[0])
 
             save_path = self.saver.save(sess, "C:\Temp\model.ckpt")
+
             print("Model Saved")
 
 
