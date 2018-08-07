@@ -4,7 +4,7 @@
 def one_hot(data_set, range_of_data, value=(0, 1)):
     return [
             [
-                sample[0], [value[1] if i != sample[-1] else value[1] for i in range(*range_of_data)]
+                sample[0], [value[0] if i != sample[-1] else value[1] for i in range(*range_of_data)]
             ] for sample in data_set
         ]
 
