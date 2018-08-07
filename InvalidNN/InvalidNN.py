@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.contrib as tfc
-from random import shuffle
 
 
 def mul(*args):
