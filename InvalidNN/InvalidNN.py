@@ -25,7 +25,7 @@ class FullyConnected(Layer):
 
 
 class Conv(Layer):
-    def __init__(self, activate_function, padding, stride, filters, filter_shape, dropout = 0):
+    def __init__(self, activate_function, padding, stride, filters, filter_shape, dropout=0):
         super().__init__('Conv', activate_function, dropout)
 
         self.filter_shape = filter_shape
@@ -49,21 +49,21 @@ class Pooling(Layer):
 
 class NeuralNetwork:
     def __init__(self, layers, input_units):  # 신경망 검사, 가중치/필터 초기화, 그래프 작성
-        # 변수 저장 옵티마이저
-        self.saver = None
-
         activate_function = {
             'sigmoid': tf.nn.sigmoid,
             'relu': tf.nn.relu,
             'softmax': tf.nn.softmax,
             'tanh': tf.nn.tanh,
             None: lambda x: x
-        }
+        }  # define activate function dict
+
         if isinstance(input_units, int):
             input_units = [input_units]
         self.input_data = tf.placeholder(tf.float32, [None, *input_units])
         flow = self.input_data
         self.layers = layers
+
+        self.drop_prob = tf.placeholder(tf.float32)
 
         for l, layer in enumerate(layers):
             if isinstance(layer, FullyConnected):
@@ -99,6 +99,8 @@ class NeuralNetwork:
             else:
                 print('layer not defined')
                 exit()
+            if layer.dropout:
+                flow = tf.nn.dropout(flow, self.drop_prob)
         self.output = flow
 
     def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, epoch = 1):
@@ -140,7 +142,11 @@ class NeuralNetwork:
                     x_batch = [i[0] for i in batch]
                     y_batch = [i[1] for i in batch]
 
-                    sess.run(train_step, feed_dict={self.input_data: x_batch, object_output: y_batch})
+                    sess.run(train_step, feed_dict={
+                        self.input_data: x_batch,
+                        object_output: y_batch,
+                        self.drop_prob: 0.7
+                    })
 
             save_path = self.saver.save(sess, "C:\Temp\model.ckpt")
 
@@ -150,7 +156,7 @@ class NeuralNetwork:
         # 질의
         with tf.Session() as sess:
             self.saver.restore(sess, "C:\Temp\model.ckpt")
-            result = sess.run(self.output, feed_dict={self.input_data: [input_data]})
+            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob:1.0})
         return result
 
     def __getitem__(self, item):

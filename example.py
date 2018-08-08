@@ -17,7 +17,7 @@ training_data = pretreatment.one_hot(training_data, (0, 10), value=(0.01, 0.99))
 training_data = pretreatment.data_normalization(training_data, rnge=(0.01, 0.09))
 
 sample_network = [
-    inv.FullyConnected('sigmoid', 200),
+    inv.FullyConnected('sigmoid', 200, dropout=True),
     inv.FullyConnected('softmax', 10)
 ]
 print(len(training_data))
