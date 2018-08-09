@@ -26,4 +26,4 @@ mynet = inv.NeuralNetwork(sample_network, input_units=784)
 mynet.train(training_data, 10, 'least-square', 'gradient-descent', 0.05, epoch=150)
 
 print(mynet.query(training_data[0][0]))
-print(training_data[0][1])
+print(training_data[0][1])      

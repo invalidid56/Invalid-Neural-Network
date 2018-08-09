@@ -25,23 +25,23 @@ class FullyConnected(Layer):
 
 
 class Conv(Layer):
-    def __init__(self, activate_function, padding, stride, filters, filter_shape, dropout=0):
+    def __init__(self, activate_function, padding:str, stride, filters, filter_shape, dropout=0):
         super().__init__('Conv', activate_function, dropout)
 
         self.filter_shape = filter_shape
         self.channels = filters
 
-        self.padding = padding.capitalize()
+        self.padding = padding.upper()
         self.stride = stride
 
 
 class Pooling(Layer):
-    def __init__(self, pooling, stride, padding, size, activate_function=None, dropout=0):
+    def __init__(self, pooling, stride, padding:str, size, activate_function=None, dropout=0):
         super().__init__('Pooling', activate_function, dropout)
 
         self.pooling = pooling
         self.stride = stride
-        self.padding = padding
+        self.padding = padding.upper()
 
         self.size = size
         self.channels = 0
@@ -62,6 +62,7 @@ class NeuralNetwork:
         self.input_data = tf.placeholder(tf.float32, [None, *input_units])
         flow = self.input_data
         self.layers = layers
+        batch_size = tf.shape(self.input_data)[0]
 
         self.drop_prob = tf.placeholder(tf.float32)
 
@@ -69,6 +70,8 @@ class NeuralNetwork:
             if isinstance(layer, FullyConnected):
                 # 초기화 오퍼레이터, 정규화 오퍼레이터 정의
                 init = tfc.layers.xavier_initializer()  # 확장 시에 선택 파라미터에 다른 오퍼레이터 추가
+                if not isinstance(layers[l-1 if l > 1 else 0], FullyConnected):
+                    flow = tf.layers.flatten(flow)
                 norm = None  # 확장 시에 추가
 
                 # 그래프 작성
@@ -95,7 +98,7 @@ class NeuralNetwork:
                 )
             elif isinstance(layer, Pooling):
                 method = tf.nn.max_pool if layer.pooling == 'max' else tf.nn.avg_pool
-                flow = method(flow, layer.size, layer.stride)
+                flow = method(flow, layer.size, layer.stride, layer.padding)
             else:
                 print('layer not defined')
                 exit()
@@ -103,7 +106,7 @@ class NeuralNetwork:
                 flow = tf.nn.dropout(flow, self.drop_prob)
         self.output = flow
 
-    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, epoch = 1):
+    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, dropout = 1.0, epoch = 1):
         object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][1])])
         # 오차함수 정의
         if loss_function == 'least-square':
@@ -145,7 +148,7 @@ class NeuralNetwork:
                     sess.run(train_step, feed_dict={
                         self.input_data: x_batch,
                         object_output: y_batch,
-                        self.drop_prob: 0.7
+                        self.drop_prob: dropout
                     })
 
             save_path = self.saver.save(sess, "C:\Temp\model.ckpt")
