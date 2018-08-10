@@ -123,6 +123,8 @@ class NeuralNetwork:
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         elif optimizer == 'adam':
             train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+        elif optimizer == 'rms-prop':
+            train_step = tf.train.RMSPropOptimizer(learning_rate).minimize(loss)
         else:
             train_step = None
             print('optimizer not defined')
