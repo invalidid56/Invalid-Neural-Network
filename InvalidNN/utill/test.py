@@ -6,6 +6,6 @@ def test_model(model, test_data):
     argmax = lambda x: x.index(max(x))
     for sample in test_data:
         output = model.query(sample[0])
-        if argmax(output) == argmax(sample[1]):
+        if argmax(output.tolist()) == argmax(sample[1]):
             score += 1
-    return score/len(test_data)
+    return score/500

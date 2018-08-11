@@ -4,7 +4,7 @@ import numpy as np
 
 def one_hot(data_set, range_of_data, value=(0, 1)):
     return [
-        [value[1] if i==data else value[0] for i in range(*value)] for data in data_set
+        [value[1] if i==data else value[0] for i in range(*range_of_data)] for data in data_set
     ]
 
 

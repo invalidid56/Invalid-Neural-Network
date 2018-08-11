@@ -10,23 +10,29 @@ def mul(*args):
 
 
 class Layer:  # 얘는 객체 속성 repr? 하면 layer(layer : 'FC', activate_function : 'sigmoid' ~~~) 이렇게 나오게
-    def __init__(self, layer: str, activate_function: str, dropout: int = None):
+    def __init__(self, layer: str, activate_function: str, dropout: int = None, normalizer:tuple = (None, None), regularizers: tuple = (None, None), initializers: tuple = ('xavier', None)):
         # 범용 속성
         self.layer = layer
         self.activate = activate_function
         self.dropout = dropout
 
+        self.norm = normalizer[0]
+        self.norm_para = normalizer[1]
+
+        self.init_weight = initializers[0]
+        self.init_bias = initializers[1]
+
 
 class FullyConnected(Layer):
-    def __init__(self, activate_function, units, dropout=0):
+    def __init__(self, activate_function, units, dropout=0, normalizer:tuple = (None, None), regularizers: tuple = (None, None), initializers: tuple = (None, None)):
         super().__init__('FullyConnected', activate_function, dropout)
 
         self.units = units
 
 
 class Conv(Layer):
-    def __init__(self, activate_function, padding:str, stride, filters, filter_shape, dropout=0):
-        super().__init__('Conv', activate_function, dropout)
+    def __init__(self, activate_function, padding:str, stride, filters, filter_shape, dropout=0, normalizer:tuple = (None, None), regularizers: tuple = (None, None), initializers: tuple = (None, None)):
+        super().__init__('Conv', activate_function, dropout, normalizer, regularizers, initializers)
 
         self.filter_shape = filter_shape
         self.channels = filters
@@ -52,18 +58,18 @@ class NeuralNetwork:
         activate_function = {
             'sigmoid': tf.nn.sigmoid,
             'relu': tf.nn.relu,
+            'relu6': tf.nn.relu6,
+            'elu': tf.nn.elu,
             'softmax': tf.nn.softmax,
+            'log-softmax': tf.nn.log_softmax,
+            'softplus': tf.nn.softplus,
+            'softsign': tf.nn.softsign,
             'tanh': tf.nn.tanh,
             None: lambda x: x
         }  # define activate function dict
 
-        if isinstance(input_units, int):
-            input_units = [input_units]
-        self.input_data = tf.placeholder(tf.float32, [None, *input_units])
-        flow = self.input_data
-        self.layers = layers
-        batch_size = tf.shape(self.input_data)[0]
-
+        if isinstance(input_units, int): input_units = [input_units]
+        flow = self.input_data = tf.placeholder(tf.float32, [None, *input_units])
         self.drop_prob = tf.placeholder(tf.float32)
 
         for l, layer in enumerate(layers):
@@ -76,10 +82,10 @@ class NeuralNetwork:
 
                 # 그래프 작성
                 flow = tfc.layers.fully_connected(
-                    inputs=flow,
-                    num_outputs=layer.units,
-                    activation_fn=activate_function[layer.activate],
-                    weights_initializer=init
+                    inputs = flow,
+                    num_outputs = layer.units,
+                    activation_fn = activate_function[layer.activate],
+                    weights_initializer = init
                 )
             elif isinstance(layer, Conv):
                 # 초기화 오퍼레이터, 정규화 오퍼레이터 정의
@@ -106,7 +112,7 @@ class NeuralNetwork:
                 flow = tf.nn.dropout(flow, self.drop_prob)
         self.output = flow
 
-    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, dropout = 1.0, epoch = 1):
+    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, dropout=1.0, epoch=1):
         object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][1])])
         # 오차함수 정의
         if loss_function == 'least-square':
@@ -161,7 +167,7 @@ class NeuralNetwork:
         # 질의
         with tf.Session() as sess:
             self.saver.restore(sess, "C:\Temp\model.ckpt")
-            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob:1.0})
+            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob: 1.0})
         return result
 
     def __getitem__(self, item):
