@@ -19,7 +19,6 @@ x_data = pretreatment.data_normalization(x_data, 'min-max', (0.01, 0.99))
 y_data = pretreatment.one_hot(y_data, (0, 10), value=(0.01, 0.99))
 for i in range(len(x_data)):
     training_data.append([x_data[i], y_data[i]])
-print(training_data[0])
 
 sample_network = [
     inv.FullyConnected('sigmoid', 200, dropout=True),
@@ -29,7 +28,3 @@ sample_network = [
 mynet = inv.NeuralNetwork(sample_network, input_units=784)
 
 mynet.train(training_data, 10, 'least-square', 'gradient-descent', 0.05, epoch=150)
-
-print(mynet.query(training_data[0][0]), training_data[0][1])
-
-print('정확도 : ', test.test_model(mynet, training_data[0:500]))
