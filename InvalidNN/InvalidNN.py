@@ -1,5 +1,7 @@
 '''
-module docs
+Invalid Neural Network v 0.02
+tensorflow 에서 신경망을 빠르게 작성하고, 편하게 테스트하기 위한 모듈입니다.
+Layer과 이를 상속받는 클래스들로 레이어를 정의하고, NeuralNetwork 객체를 만드십시오.
 '''
 
 import tensorflow as tf
@@ -10,6 +12,10 @@ from random import choice
 class Layer(object):  # Meta class for layers
     '''
     class Layer
+    기본적인 레이어 클래스입니다.
+    :param name: 레이어의 이름을 설정합니다(시각화나 name scoping)
+    :param activate_fn: 레이어의 출력에 사용할 활성화 함수를 설정합니다.
+    :param dropout: 레이어의 드롭아웃 적용 여부를 결정합니다.
     '''
     def __init__(self, name, activate_fn, dropout=False):
         self.name = name  # Layer's name: for name scoping
@@ -25,12 +31,23 @@ class Layer(object):  # Meta class for layers
 
 
 class Dense(Layer):
+    '''
+    전결합층 레이어 클래스입니다.
+    :param units: 레이어의 출력 유닛 개수를 설정합니다
+    '''
     def __init__(self, name, activate_fn, units, dropout=False):
         super().__init__(name, activate_fn, dropout)  # init super
         self.units = units  # define layer's output units
 
 
 class Conv2D(Layer):
+    '''
+    2D 입력에 대한 합성곱층 레이어 클래스입니다.
+    :param filters: 레이어가 사용할 필터의 개수를 설정합니다(감지할 특성, 사용할 커널)
+    :param filter_shape: 레이어가 사용할 필터의 모양을 설정합니다([height, weight])
+    :param stride: 필터에 적용할 보폭(stride)를 설정합니다([h_stride, w_stride])
+    :param padding: 필터에 적용할 패딩 방식을 설정합니다('valid', 'same')
+    '''
     def __init__(self, name, activate_fn, filters, filter_shape, stride, padding, dropout=False):
         super().__init__(name, activate_fn, dropout)  # init super
         self.filters = filters  # define layer's output kernels
@@ -40,6 +57,13 @@ class Conv2D(Layer):
 
 
 class Pooling(Layer):
+    '''
+    2D 입력에 대한 풀링층 레이어 클래스입니다
+    :param pooling: 풀링 방식을 설정합니다('avg', 'max')
+    :param stride: 풀링 윈도우의 보폭(stride)를 설정합니다([h_stride, w_stride])
+    :param size: 풀링 윈도우의 크기를 설정합니다([height, weight])
+    :param padding: 적용할 패딩 방식을 설정합니다('valid', 'same')
+    '''
     def __init__(self, name, pooling, stride, size, padding, activate_fn=None, dropout=False):
         super().__init__(name, activate_fn, dropout)
         self.pooling = pooling.lower()  # define layer's pooling method
@@ -52,6 +76,9 @@ class Pooling(Layer):
 class NeuralNetwork:
     '''
     class NeuralNetwork
+    뉴럴 네트워크 클래스입니다. Layer 타입의 인스턴스들을 입력받아 이를 연결합니다.
+    :param layers: Layer 타입의 인스턴스들의 collection입니다
+    :param input: 입력 레이어의 유닛의 개수입니다.
     '''
     def __init__(self, layers, input):
         self._layers = layers
@@ -89,9 +116,9 @@ class NeuralNetwork:
                     layer.bias = tf.Variable(tf.constant(-1.), name='bias')
                     flow = tf.matmul(flow, layer.weight) + layer.bias
 
-                    tf.summary.tensor_summary(layer.name+'/weight', layer.weight)
-                    tf.summary.tensor_summary(layer.name+'/bias', layer.bias)
-                    tf.summary.tensor_summary(layer.name+'/flow', flow)
+                    tf.summary.histogram('/weight', layer.weight)
+                    tf.summary.histogram('/bias', layer.bias)
+                    tf.summary.histogram('/flow', flow)
             elif isinstance(layer, Conv2D):
                 with tf.name_scope(layer.name) as scope:
                     layer.filter = tf.Variable(name="filter",
@@ -100,10 +127,10 @@ class NeuralNetwork:
                     layer.bias = tf.Variable(-1., [layer.filters], name='bias')
                     flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding) + layer.bias
 
-                    tf.summary.tensor_summary(layer.name + '/filter', layer.filter)
-                    tf.summary.tensor_summary(layer.name + '/bias', layer.bias)
-                    tf.summary.tensor_summary(layer.name + '/flow', flow)
-                    tf.summary.image(layer.name + '/flow_image', flow)
+                    tf.summary.histogram('/filter', layer.filter)
+                    tf.summary.histogram('/bias', layer.bias)
+                    tf.summary.histogram('/flow', flow)
+                    tf.summary.image('/flow_image', flow)
             elif isinstance(layer, Pooling):
                 with tf.name_scope(layer.name) as scope:
                     if layer.pooling == 'max':
@@ -114,7 +141,7 @@ class NeuralNetwork:
                         print('error')
                     flow = method(flow, layer.size, layer.stride, layer.padding, name='padding')
 
-                    tf.summary.tensor_summary(layer.name + '/flow', flow)
+                    tf.summary.histogram(layer.name + '/flow', flow)
                     tf.summary.image(layer.name + '/flow_image', flow)
             else:
                 print('layer not defined')
@@ -122,8 +149,9 @@ class NeuralNetwork:
             flow = activate_function[layer.activate](flow)
             if layer.dropout:
                 flow = tf.nn.dropout(flow, self.drop_prob)
+        merged = tf.summary.merge_all()
         self.output = flow
-
+        self.saver = tf.train.Saver()
 
     def __getitem__(self, item):
         return self._layers[item]
@@ -131,13 +159,30 @@ class NeuralNetwork:
     def __len__(self):
         return len(self._layers)
 
-    def __str__(self):
-        pass
-
-    def query(self, input, model_path='.'):
-        pass
+    def query(self, input, model_path='./'):
+        '''
+        function query(input, model_path): 질의 메서드입니다.
+        :param input: 뉴럴 네트워크에 입력할 값입니다(n-d tensor혹은 그로 컨버팅 가능한 인스턴스).
+        :param model_path: 모델 파일이 저장된 경로입니다. 기본값은 현재 경로입니다
+        :return: 뉴럴 네트워크에서 input을 계산한 값이 반환됩니다
+        '''
+        with tf.Session() as sess:
+            self.saver.restore(sess, model_path+'/model.ckpt')
+            return sess.run(self.output, feed_dict={self.input_data: [input], self.drop_prob: 1.})
 
     def train(self, train_data, batch_size, loss_function, optimizer, learning_rate, epoch, model_path = './', dropout_p=1.0):
+        '''
+        function train(...): 훈련 메서드입니다
+        :param train_data: 훈련에 사용될 데이터세트입니다([x, y]의 collection)
+        :param batch_size: 배치 하나의 사이즈입니다
+        :param loss_function: 사용할 오차함수를 결정합니다('least-mean', 'cross-entropy')
+        :param optimizer: 사용할 옵티마이저를 결정합니다('gradient-descent', 'adam', 'rms-prop')
+        :param learning_rate: 학습률을 결정합니다
+        :param epoch: 반복 횟수를 결저합니다
+        :param model_path: 요약 파일과 모델 파일이 저장될 경로를 결정합니다
+        :param dropout_p: 드롭아웃 확률을 결정합니다
+        :return:
+        '''
         # define placeholder
         object_output = tf.placeholder(tf.float32, [None, len(train_data[0][-1])])
 
@@ -169,7 +214,6 @@ class NeuralNetwork:
         #
         init = tf.global_variables_initializer()
         merged = tf.summary.merge_all()
-        self.saver = tf.train.Saver()
 
         with tf.Session() as sess:
             train_writter = tf.summary.FileWriter(model_path, sess.graph)

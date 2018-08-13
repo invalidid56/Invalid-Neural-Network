@@ -27,4 +27,6 @@ sample_network = [
 
 mynet = inv.NeuralNetwork(sample_network, input=784)
 
-mynet.train(training_data, 100, 'least-square', 'gradient-descent', 0.05, 10, model_path='./model')
+print(mynet.query(training_data[0][0], model_path='./model'))
+
+mynet.train(training_data, 100, 'least-square', 'gradient-descent', 0.05, 10000, model_path='./model')
