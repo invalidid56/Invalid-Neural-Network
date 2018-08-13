@@ -1,4 +1,4 @@
-from InvalidNN import InvalidNN as inv
+from InvalidNN import invalidnn as inv
 from InvalidNN.utill import pretreatment
 from InvalidNN.utill import test
 import csv
@@ -21,10 +21,10 @@ for i in range(len(x_data)):
     training_data.append([x_data[i], y_data[i]])
 
 sample_network = [
-    inv.FullyConnected('sigmoid', 200, dropout=True),
-    inv.FullyConnected('softmax', 10)
+    inv.Dense('fc_1', 'sigmoid', 200, dropout=True),
+    inv.Dense('fc_2', 'softmax', 10)
 ]
 
-mynet = inv.NeuralNetwork(sample_network, input_units=784)
+mynet = inv.NeuralNetwork(sample_network, input=784)
 
-mynet.train(training_data, 10, 'least-square', 'gradient-descent', 0.05, epoch=150)
+mynet.train(training_data, 100, 'least-square', 'gradient-descent', 0.05, 10, model_path='./model')

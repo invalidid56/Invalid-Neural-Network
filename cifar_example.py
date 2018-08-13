@@ -1,4 +1,4 @@
-from InvalidNN import InvalidNN as inv
+from InvalidNN import invalidnn as inv
 from InvalidNN.utill import pretreatment
 from tensorflow.python.keras._impl.keras.datasets.cifar10 import load_data
 

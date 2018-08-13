@@ -1,54 +1,61 @@
+'''
+module docs
+'''
+
 import tensorflow as tf
-import tensorflow.contrib as tfc
+import tensorflow.contrib as tf_c
+from random import choice
+
+# Layers(추가사항: 정규화, 규제 레이어 추가, 레이어 생성시 생성메서드 추가 입력)
+class Layer(object):  # Meta class for layers
+    '''
+    class Layer
+    '''
+    def __init__(self, name, activate_fn, dropout=False):
+        self.name = name  # Layer's name: for name scoping
+        self.activate = activate_fn  # activate function
+        self.dropout = dropout  # apply dropout or not
+
+    def __str__(self):
+        attributes = [[name, keys] for name, keys in self.__dict__.items()]
+        attributes.pop(0)
+        result = '{}' + '(' + ('{}: {}, '*(len(attributes)-1)) + '{}: {})'
+        attributes = sum(attributes, [])
+        return result.format(self.name, *attributes)
 
 
-def mul(*args):
-    k = 1
-    for a in args:
-        k *= a
-    return k
+class Dense(Layer):
+    def __init__(self, name, activate_fn, units, dropout=False):
+        super().__init__(name, activate_fn, dropout)  # init super
+        self.units = units  # define layer's output units
 
 
-class Layer:  # 얘는 객체 속성 repr? 하면 layer(layer : 'FC', activate_function : 'sigmoid' ~~~) 이렇게 나오게
-    def __init__(self, layer: str, activate_function: str, dropout: int = None,):
-        # 범용 속성
-        self.layer = layer
-        self.activate = activate_function
-        self.dropout = dropout
-
-
-class FullyConnected(Layer):
-    def __init__(self, activate_function, units, dropout=0):
-        super().__init__('FullyConnected', activate_function, dropout)
-
-        self.units = units
-
-
-class Conv(Layer):
-    def __init__(self, activate_function, padding:str, stride, filters, filter_shape, dropout=0):
-        super().__init__('Conv', activate_function, dropout)
-
-        self.filter_shape = filter_shape
-        self.channels = filters
-
-        self.padding = padding.upper()
-        self.stride = stride
+class Conv2D(Layer):
+    def __init__(self, name, activate_fn, filters, filter_shape, stride, padding, dropout=False):
+        super().__init__(name, activate_fn, dropout)  # init super
+        self.filters = filters  # define layer's output kernels
+        self.filter_shape = filter_shape  # define filter's shape
+        self.stride = stride  # define filter's stride
+        self.padding = padding.upper()  # define layer's padding method
 
 
 class Pooling(Layer):
-    def __init__(self, pooling, stride, padding:str, size, activate_function=None, dropout=0):
-        super().__init__('Pooling', activate_function, dropout)
-
-        self.pooling = pooling
-        self.stride = stride
+    def __init__(self, name, pooling, stride, size, padding, activate_fn=None, dropout=False):
+        super().__init__(name, activate_fn, dropout)
+        self.pooling = pooling.lower()  # define layer's pooling method
+        self.stride = stride  # define stride
+        self.size = size  # define pooling window's size
         self.padding = padding.upper()
 
-        self.size = size
-        self.channels = 0
 
-
+# Neural Networks
 class NeuralNetwork:
-    def __init__(self, layers, input_units):  # 신경망 검사, 가중치/필터 초기화, 그래프 작성
+    '''
+    class NeuralNetwork
+    '''
+    def __init__(self, layers, input):
+        self._layers = layers
+        # define methods
         activate_function = {
             'sigmoid': tf.nn.sigmoid,
             'relu': tf.nn.relu,
@@ -60,76 +67,94 @@ class NeuralNetwork:
             'softsign': tf.nn.softsign,
             'tanh': tf.nn.tanh,
             None: lambda x: x
-        }  # define activate function dict
-
-        initializer = {
-            'xavier': tfc.layers.xavier_initializer,
-            'xavier_conv': tfc.layers.xavier_initializer_conv2d,
-            'variance_scaling': tfc.layers.variance_scaling_initializer,
         }
 
-        if isinstance(input_units, int): input_units = [input_units]
-        flow = self.input_data = tf.placeholder(tf.float32, [None, *input_units])
+        # define placeholders
+        if isinstance(input, int): input = [input]
+        flow = self.input_data = tf.placeholder(tf.float32, [None, *input])
+        batch_size = flow.shape[0]
         self.drop_prob = tf.placeholder(tf.float32)
 
+        # initialize layers
         for l, layer in enumerate(layers):
-            if isinstance(layer, FullyConnected):
-                with tf.name_scope(layer.layer) as scope:
-                    # 초기화 오퍼레이터, 정규화 오퍼레이터 정의
-                    init = tfc.layers.xavier_initializer()  # 확장 시에 선택 파라미터에 다른 오퍼레이터 추가
-                    if not isinstance(layers[l-1 if l > 1 else 0], FullyConnected):
-                        flow = tf.layers.flatten(flow)
-                    norm = None  # 확장 시에 추가
-                    # 그래프 작성
-                    flow = tfc.layers.fully_connected(
-                        inputs = flow,
-                        num_outputs = layer.units,
-                        activation_fn = activate_function[layer.activate],
-                        weights_initializer = init,
+            if isinstance(layer, Dense):
+                with tf.name_scope(layer.name) as scope:
+                    if l>0 and (isinstance(layers[l-1], Conv2D) or isinstance(layers[l-1], Pooling)):
+                        # 랭크 크기 비교로 수정
+                        flow = tf_c.layers.flatten(flow)
+                    layer.weight = tf.Variable(
+                        tf.random_normal([input[0] if l==0 else layers[l-1].units, layer.units]),
+                        name='weight'
                     )
-                    tfc.layers.summarize_tensor(flow, layer.layer+'/flow')
-            elif isinstance(layer, Conv):
-                # 초기화 오퍼레이터, 정규화 오퍼레이터 정의
-                init = tfc.layers.xavier_initializer()
-                norm = None
+                    layer.bias = tf.Variable(tf.constant(-1.), name='bias')
+                    flow = tf.matmul(flow, layer.weight) + layer.bias
 
-                # 그래프 작성, 확장 시에 여러 컨볼루션 모델 적용
-                flow = tfc.layers.convolution2d(
-                    inputs=flow,
-                    num_outputs=layer.channels,
-                    kernel_size=layer.filter_shape,
-                    activation_fn=activate_function[layer.activate],
-                    weights_initializer=init,
-                    padding=layer.padding,
-                    stride=layer.stride
-                )
+                    tf.summary.tensor_summary(layer.name+'/weight', layer.weight)
+                    tf.summary.tensor_summary(layer.name+'/bias', layer.bias)
+                    tf.summary.tensor_summary(layer.name+'/flow', flow)
+            elif isinstance(layer, Conv2D):
+                with tf.name_scope(layer.name) as scope:
+                    layer.filter = tf.Variable(name="filter",
+                                                   shape=[*layer.filter_shape, flow.shape[-1], layer.filters],
+                                                   initializer=tf_c.layers.xavier_initializer_conv2d())
+                    layer.bias = tf.Variable(-1., [layer.filters], name='bias')
+                    flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding) + layer.bias
+
+                    tf.summary.tensor_summary(layer.name + '/filter', layer.filter)
+                    tf.summary.tensor_summary(layer.name + '/bias', layer.bias)
+                    tf.summary.tensor_summary(layer.name + '/flow', flow)
+                    tf.summary.image(layer.name + '/flow_image', flow)
             elif isinstance(layer, Pooling):
-                method = tf.nn.max_pool if layer.pooling == 'max' else tf.nn.avg_pool
-                flow = method(flow, layer.size, layer.stride, layer.padding)
-            elif isinstance(layer, Recurrent):
-                pass
+                with tf.name_scope(layer.name) as scope:
+                    if layer.pooling == 'max':
+                        method = tf.nn.max_pool
+                    elif layer.pooling == 'avg':
+                        method = tf.nn.avg_pool
+                    else:
+                        print('error')
+                    flow = method(flow, layer.size, layer.stride, layer.padding, name='padding')
+
+                    tf.summary.tensor_summary(layer.name + '/flow', flow)
+                    tf.summary.image(layer.name + '/flow_image', flow)
             else:
                 print('layer not defined')
                 exit()
+            flow = activate_function[layer.activate](flow)
             if layer.dropout:
                 flow = tf.nn.dropout(flow, self.drop_prob)
         self.output = flow
 
-    def train(self, training_dataset, batch_size, loss_function, optimizer, learning_rate, dropout=1.0, epoch=1):
-        merged = tf.summary.merge_all()
 
-        object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][1])])
-        # 오차함수 정의
-        if loss_function == 'least-square':
-            loss = tf.reduce_mean(tf.square(object_output - self.output))
-        elif loss_function == 'cross-entropy':
-            loss = -tf.reduce_sum(object_output*tf.log(self.output))
-        else:
-            loss = None
-            print('error : loss Function not defined')
-            exit()
+    def __getitem__(self, item):
+        return self._layers[item]
 
-        # 옵티마이저 정의
+    def __len__(self):
+        return len(self._layers)
+
+    def __str__(self):
+        pass
+
+    def query(self, input, model_path='.'):
+        pass
+
+    def train(self, train_data, batch_size, loss_function, optimizer, learning_rate, epoch, model_path = './', dropout_p=1.0):
+        # define placeholder
+        object_output = tf.placeholder(tf.float32, [None, len(train_data[0][-1])])
+
+        # define loss function
+        with tf.name_scope('loss') as scope:
+            if loss_function == 'least-square':
+                loss = tf.reduce_mean(tf.square(object_output - self.output), name='least-square')
+            elif loss_function == 'cross-entropy':
+                loss = -tf.reduce_sum(object_output * tf.log(self.output), name='cross-entropy')
+            else:
+                loss = None
+                print('error : loss Function not defined')
+                exit()
+
+            tf_c.layers.summarize_tensor(loss, '/loss')
+
+        # define train optimizer
         if optimizer == 'gradient-descent':
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         elif optimizer == 'adam':
@@ -141,45 +166,30 @@ class NeuralNetwork:
             print('optimizer not defined')
             exit()
 
-        # 변수 초기화, 저장 옵티마이저
+        #
         init = tf.global_variables_initializer()
+        merged = tf.summary.merge_all()
         self.saver = tf.train.Saver()
 
-        # 신경망 학습
         with tf.Session() as sess:
-            train_writer = tf.summary.FileWriter('C:\Temp' + '/train',
-                                                 sess.graph)
+            train_writter = tf.summary.FileWriter(model_path, sess.graph)
+
             sess.run(init)
 
             for _ in range(epoch):
-                dataset_length = len(training_dataset)
+                batch = []
+                for __ in range(batch_size):
+                    batch.append(choice(train_data))
+                x_batch = [b[0] for b in batch]
+                y_batch = [b[1] for b in batch]
 
-                for b in range(round(dataset_length/batch_size)):
-                    batch = training_dataset[b*batch_size: (b+1)*batch_size]
-
-                    x_batch = [i[0] for i in batch]
-                    y_batch = [i[1] for i in batch]
-
-                    summary, _ = sess.run([merged, train_step], feed_dict={
+                summary, _ = sess.run([merged, train_step], feed_dict={
                         self.input_data: x_batch,
                         object_output: y_batch,
-                        self.drop_prob: dropout
+                        self.drop_prob: dropout_p
                     })
 
-                    train_writer.add_summary(summary, b)
+                train_writter.add_summary(summary)
+            self.saver.save(sess, model_path+'\model.ckpt')
 
-            save_path = self.saver.save(sess, "C:\Temp\model.ckpt")
-
-            print("Model Saved")
-
-    def query(self, input_data):
-        # 질의
-        with tf.Session() as sess:
-            self.saver.restore(sess, "C:\Temp\model.ckpt")
-            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob: 1.0})
-        return result
-
-    def __getitem__(self, item):
-        pass
-
-
+            print('train progress finished')
