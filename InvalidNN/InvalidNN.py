@@ -104,15 +104,16 @@ class NeuralNetwork:
 
         # initialize layers
         for l, layer in enumerate(layers):
+            print(l)
             if isinstance(layer, Dense):
                 with tf.name_scope(layer.name) as scope:
-                    if l>0 and (isinstance(layers[l-1], Conv2D) or isinstance(layers[l-1], Pooling)):
+                    if l != 0 and (isinstance(layers[l-1], Conv2D) or isinstance(layers[l-1], Pooling)):
                         # 랭크 크기 비교로 수정
                         flow = tf_c.layers.flatten(flow)
                     layer.weight = tf.Variable(
-                        tf.random_normal([input[0] if l==0 else layers[l-1].units, layer.units]),
+                        tf.random_normal([input[0] if l==0 else tf.to_int32(flow.shape[-1]), layer.units]),
                         name='weight'
-                    )
+                    )/tf.sqrt(float(layer.units))
                     layer.bias = tf.Variable(tf.constant(-1.), name='bias')
                     flow = tf.matmul(flow, layer.weight) + layer.bias
 
@@ -121,16 +122,16 @@ class NeuralNetwork:
                     tf.summary.histogram('/flow', flow)
             elif isinstance(layer, Conv2D):
                 with tf.name_scope(layer.name) as scope:
-                    layer.filter = tf.Variable(name="filter",
-                                                   shape=[*layer.filter_shape, flow.shape[-1], layer.filters],
-                                                   initializer=tf_c.layers.xavier_initializer_conv2d())
-                    layer.bias = tf.Variable(-1., [layer.filters], name='bias')
+                    layer.filter = tf.Variable(
+                        tf.random_normal([*layer.filter_shape, tf.to_int32(flow.shape[-1]), layer.filters]),
+                        name = "filter"
+                    )/tf.sqrt(float(layer.filters))
+                    layer.bias = tf.Variable(tf.constant(-1., shape=[layer.filters]), name='bias')
                     flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding) + layer.bias
 
                     tf.summary.histogram('/filter', layer.filter)
                     tf.summary.histogram('/bias', layer.bias)
                     tf.summary.histogram('/flow', flow)
-                    tf.summary.image('/flow_image', flow)
             elif isinstance(layer, Pooling):
                 with tf.name_scope(layer.name) as scope:
                     if layer.pooling == 'max':
@@ -139,10 +140,9 @@ class NeuralNetwork:
                         method = tf.nn.avg_pool
                     else:
                         print('error')
-                    flow = method(flow, layer.size, layer.stride, layer.padding, name='padding')
+                    flow = method(flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding, name='padding')
 
                     tf.summary.histogram(layer.name + '/flow', flow)
-                    tf.summary.image(layer.name + '/flow_image', flow)
             else:
                 print('layer not defined')
                 exit()
@@ -232,8 +232,9 @@ class NeuralNetwork:
                         object_output: y_batch,
                         self.drop_prob: dropout_p
                     })
-
                 train_writter.add_summary(summary)
             self.saver.save(sess, model_path+'\model.ckpt')
 
             print('train progress finished')
+            print(sess.run(self.output, feed_dict={self.input_data:[train_data[0][0]], self.drop_prob: 1.}))
+            print(train_data[0][1])
