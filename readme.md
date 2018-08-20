@@ -45,4 +45,3 @@ MyFisrtNetwork.train(training_data, batch_size = 10, loss_function = 'least-loss
 
 print(MyFisrtNetwork.query(test_data[0][0])) # 테스트 데이터의 첫번째 입력값을 신경망에 질의하고 출력합니다.
 ```
-
