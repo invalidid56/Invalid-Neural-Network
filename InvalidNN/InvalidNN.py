@@ -8,6 +8,14 @@ import tensorflow as tf
 import tensorflow.contrib as tf_c
 from random import choice
 
+
+def mul(*args):
+    result = 1
+    for i in args:
+        result *= i
+    return result
+
+
 # Layers(추가사항: 정규화, 규제 레이어 추가, 레이어 생성시 생성메서드 추가 입력)
 class Layer(object):  # Meta class for layers
     '''
@@ -104,34 +112,27 @@ class NeuralNetwork:
 
         # initialize layers
         for l, layer in enumerate(layers):
-            print(l)
             if isinstance(layer, Dense):
                 with tf.name_scope(layer.name) as scope:
                     if l != 0 and (isinstance(layers[l-1], Conv2D) or isinstance(layers[l-1], Pooling)):
                         # 랭크 크기 비교로 수정
-                        flow = tf_c.layers.flatten(flow)
+                        flow = tf.reshape(flow, [-1, mul(*flow.get_shape().as_list()[-3:])])
                     layer.weight = tf.Variable(
-                        tf.random_normal([input[0] if l==0 else tf.to_int32(flow.shape[-1]), layer.units]),
-                        name='weight'
-                    )/tf.sqrt(float(layer.units))
-                    layer.bias = tf.Variable(tf.constant(-1.), name='bias')
-                    flow = tf.matmul(flow, layer.weight) + layer.bias
-
-                    tf.summary.histogram('/weight', layer.weight)
-                    tf.summary.histogram('/bias', layer.bias)
-                    tf.summary.histogram('/flow', flow)
+                        tf.random_normal([input[0] if l==0 else tf.to_int32(flow.shape[-1]), layer.units])/tf.sqrt(float(layer.units)/2),
+                        name='weight',
+                        trainable=True
+                    )
+                    layer.bias = tf.Variable(tf.random_normal(shape=[1]), name='bias')
+                    flow = tf.matmul(flow, layer.weight)
             elif isinstance(layer, Conv2D):
                 with tf.name_scope(layer.name) as scope:
                     layer.filter = tf.Variable(
-                        tf.random_normal([*layer.filter_shape, tf.to_int32(flow.shape[-1]), layer.filters]),
-                        name = "filter"
-                    )/tf.sqrt(float(layer.filters))
-                    layer.bias = tf.Variable(tf.constant(-1., shape=[layer.filters]), name='bias')
-                    flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding) + layer.bias
-
-                    tf.summary.histogram('/filter', layer.filter)
-                    tf.summary.histogram('/bias', layer.bias)
-                    tf.summary.histogram('/flow', flow)
+                        tf.random_normal([*layer.filter_shape, tf.to_int32(flow.shape[-1]), layer.filters])/tf.sqrt(float(layer.filters)/2),
+                        name = "filter",
+                        trainable=True
+                    )
+                    layer.bias = tf.Variable(tf.random_normal(shape=[layer.filters]), name='bias')
+                    flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding)
             elif isinstance(layer, Pooling):
                 with tf.name_scope(layer.name) as scope:
                     if layer.pooling == 'max':
@@ -140,16 +141,13 @@ class NeuralNetwork:
                         method = tf.nn.avg_pool
                     else:
                         print('error')
-                    flow = method(flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding, name='padding')
-
-                    tf.summary.histogram(layer.name + '/flow', flow)
+                    flow = method(flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding, name='pooling')
             else:
                 print('layer not defined')
                 exit()
             flow = activate_function[layer.activate](flow)
             if layer.dropout:
                 flow = tf.nn.dropout(flow, self.drop_prob)
-        merged = tf.summary.merge_all()
         self.output = flow
         self.saver = tf.train.Saver()
 
@@ -167,7 +165,7 @@ class NeuralNetwork:
         :return: 뉴럴 네트워크에서 input을 계산한 값이 반환됩니다
         '''
         with tf.Session() as sess:
-            self.saver.restore(sess, model_path+'/model.ckpt')
+            self.saver.restore(sess, model_path+'model.ckpt')
             return sess.run(self.output, feed_dict={self.input_data: [input], self.drop_prob: 1.})
 
     def train(self, train_data, batch_size, loss_function, optimizer, learning_rate, epoch, model_path = './', dropout_p=1.0):
@@ -178,7 +176,7 @@ class NeuralNetwork:
         :param loss_function: 사용할 오차함수를 결정합니다('least-mean', 'cross-entropy')
         :param optimizer: 사용할 옵티마이저를 결정합니다('gradient-descent', 'adam', 'rms-prop')
         :param learning_rate: 학습률을 결정합니다
-        :param epoch: 반복 횟수를 결저합니다
+        :param epoch: 반복 횟수를 결정합니다
         :param model_path: 요약 파일과 모델 파일이 저장될 경로를 결정합니다
         :param dropout_p: 드롭아웃 확률을 결정합니다
         :return:
@@ -191,12 +189,11 @@ class NeuralNetwork:
             if loss_function == 'least-square':
                 loss = tf.reduce_mean(tf.square(object_output - self.output), name='least-square')
             elif loss_function == 'cross-entropy':
-                loss = -tf.reduce_sum(object_output * tf.log(self.output), name='cross-entropy')
+                loss = -tf.reduce_sum(object_output * tf.log(tf.clip_by_value(self.output, 1e-30, 1.0)), name='cross-entropy')
             else:
                 loss = None
                 print('error : loss Function not defined')
                 exit()
-
             tf_c.layers.summarize_tensor(loss, '/loss')
 
         # define train optimizer
@@ -217,13 +214,12 @@ class NeuralNetwork:
 
         with tf.Session() as sess:
             train_writter = tf.summary.FileWriter(model_path, sess.graph)
-
             sess.run(init)
 
             for _ in range(epoch):
                 batch = []
                 for __ in range(batch_size):
-                    batch.append(choice(train_data))
+                    batch.append(choice(train_data) )
                 x_batch = [b[0] for b in batch]
                 y_batch = [b[1] for b in batch]
 
@@ -233,8 +229,6 @@ class NeuralNetwork:
                         self.drop_prob: dropout_p
                     })
                 train_writter.add_summary(summary)
-            self.saver.save(sess, model_path+'\model.ckpt')
+            self.saver.save(sess, model_path+'model.ckpt')
 
             print('train progress finished')
-            print(sess.run(self.output, feed_dict={self.input_data:[train_data[0][0]], self.drop_prob: 1.}))
-            print(train_data[0][1])
