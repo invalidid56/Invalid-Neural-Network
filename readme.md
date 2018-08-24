@@ -1,6 +1,6 @@
 <!-- $theme: default -->
 
-Invalid Neural Network: InvalidNN v 0.1
+Invalid Neural Network: InvalidNN v 0.2
 ===
 
 What Is This?
