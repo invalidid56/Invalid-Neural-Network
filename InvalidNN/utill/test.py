@@ -2,10 +2,9 @@
 
 
 def test_model(model, test_data):
-    score = 0
-    argmax = lambda x: x.index(max(x))
-    for sample in test_data:
-        output = model.query(sample[0])
-        if argmax(output.tolist()) == argmax(sample[1]):
-            score += 1
-    return score
+    def argmax(x):
+        return x.index(max(x))
+
+    return sum([
+        argmax(model.query(sample[0])) == argmax(sample[1]) for sample in test_data
+    ])/len(test_data)

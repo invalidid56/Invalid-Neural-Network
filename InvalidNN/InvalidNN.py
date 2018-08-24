@@ -166,7 +166,7 @@ class NeuralNetwork:
         '''
         with tf.Session() as sess:
             self.saver.restore(sess, model_path+'model.ckpt')
-            return sess.run(self.output, feed_dict={self.input_data: [input], self.drop_prob: 1.})
+            return sess.run(self.output, feed_dict={self.input_data: [input], self.drop_prob: 1.}).reshape(-1).tolist()
 
     def train(self, train_data, batch_size, loss_function, optimizer, learning_rate, epoch, model_path = './', dropout_p=1.0):
         '''
