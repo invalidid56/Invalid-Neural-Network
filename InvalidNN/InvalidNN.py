@@ -167,7 +167,7 @@ class NeuralNetwork:
         # 질의
         with tf.Session() as sess:
             self.saver.restore(sess, "C:\Temp\model.ckpt")
-            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob: 1.0})
+            result = sess.run(self.output, feed_dict={self.input_data: [input_data], self.drop_prob: 1.0}).reshape(-1).tolist()
         return result
 
     def __getitem__(self, item):
