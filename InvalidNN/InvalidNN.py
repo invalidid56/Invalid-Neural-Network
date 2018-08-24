@@ -29,6 +29,7 @@ class Layer(object):  # Meta class for layers
         self.name = name  # Layer's name: for name scoping
         self.activate = activate_fn  # activate function
         self.dropout = dropout  # apply dropout or not
+        self._h_flow = None
 
     def __str__(self):
         attributes = [[name, keys] for name, keys in self.__dict__.items()]
@@ -36,6 +37,9 @@ class Layer(object):  # Meta class for layers
         result = '{}' + '(' + ('{}: {}, '*(len(attributes)-1)) + '{}: {})'
         attributes = sum(attributes, [])
         return result.format(self.name, *attributes)
+
+    def get_flow(self):
+        return self._h_flow
 
 
 class Dense(Layer):
@@ -82,12 +86,12 @@ class Pooling(Layer):
 
 # Neural Networks
 class NeuralNetwork:
-    '''
+    """
     class NeuralNetwork
     뉴럴 네트워크 클래스입니다. Layer 타입의 인스턴스들을 입력받아 이를 연결합니다.
     :param layers: Layer 타입의 인스턴스들의 collection입니다
     :param input: 입력 레이어의 유닛의 개수입니다.
-    '''
+    """
     def __init__(self, layers, input):
         self._layers = layers
         # define methods
@@ -105,50 +109,73 @@ class NeuralNetwork:
         }
 
         # define placeholders
-        if isinstance(input, int): input = [input]
-        flow = self.input_data = tf.placeholder(tf.float32, [None, *input])
-        batch_size = flow.shape[0]
+        if isinstance(input, int):
+            input = [input]
+        self.input_data = tf.placeholder(tf.float32, [None, *input])
         self.drop_prob = tf.placeholder(tf.float32)
 
         # initialize layers
         for l, layer in enumerate(layers):
             if isinstance(layer, Dense):
                 with tf.name_scope(layer.name) as scope:
-                    if l != 0 and (isinstance(layers[l-1], Conv2D) or isinstance(layers[l-1], Pooling)):
-                        # 랭크 크기 비교로 수정
-                        flow = tf.reshape(flow, [-1, mul(*flow.get_shape().as_list()[-3:])])
-                    layer.weight = tf.Variable(
-                        tf.random_normal([input[0] if l==0 else tf.to_int32(flow.shape[-1]), layer.units])/tf.sqrt(float(layer.units)/2),
+                    if l == 0:
+                        in_flow = self.input_data
+                    else:
+                        in_flow = layers[l-1].get_flow()
+                        if len(in_flow.get_shape().as_list()) > 2:
+                            in_flow = tf.reshape(in_flow, [-1, mul(*in_flow.get_shape().as_list()[-3:])])
+
+                    layer._weight = tf.Variable(
+                        tf.random_normal([
+                            in_flow.get_shape().as_list()[-1], layer.units
+                        ])/tf.sqrt(float(layer.units)/(2 if layer.activate == 'relu' else 1)),
                         name='weight',
                         trainable=True
                     )
-                    layer.bias = tf.Variable(tf.random_normal(shape=[1]), name='bias')
-                    flow = tf.matmul(flow, layer.weight)
+                    layer._bias = tf.Variable(tf.random_normal(shape=[1]), name='bias')
+                    layer._u_flow = tf.matmul(in_flow, layer._weight) + layer._bias
             elif isinstance(layer, Conv2D):
                 with tf.name_scope(layer.name) as scope:
-                    layer.filter = tf.Variable(
-                        tf.random_normal([*layer.filter_shape, tf.to_int32(flow.shape[-1]), layer.filters])/tf.sqrt(float(layer.filters)/2),
-                        name = "filter",
+                    if l == 0:
+                        in_flow = self.input_data
+                    else:
+                        if isinstance(layers[l-1], Dense):
+                            print('Invalid Connection')
+                            exit()
+                        in_flow = layers[l-1].get_flow()
+                    layer._filter = tf.Variable(
+                        tf.random_normal([
+                            *layer.filter_shape, in_flow.get_shape().as_list()[-1], layer.filters
+                        ])/tf.sqrt(float(layer.filters)/(2 if layer.activate == 'relu' else 1)),
+                        name="filter",
                         trainable=True
                     )
-                    layer.bias = tf.Variable(tf.random_normal(shape=[layer.filters]), name='bias')
-                    flow = tf.nn.conv2d(flow, layer.filter, [1, *layer.stride, 1], layer.padding)
+                    layer._bias = tf.Variable(tf.random_normal(shape=[layer.filters]), name='bias')
+                    layer._u_flow = tf.nn.conv2d(in_flow, layer._filter, [1, *layer.stride, 1], layer.padding) + layer._bias
             elif isinstance(layer, Pooling):
                 with tf.name_scope(layer.name) as scope:
+                    if l == 0:
+                        in_flow = self.input_data
+                    else:
+                        if isinstance(layers[l-1], Dense):
+                            print('Invalid Connection')
+                            exit()
+                        in_flow = layers[l-1].get_flow()
                     if layer.pooling == 'max':
                         method = tf.nn.max_pool
                     elif layer.pooling == 'avg':
                         method = tf.nn.avg_pool
                     else:
                         print('error')
-                    flow = method(flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding, name='pooling')
+                    layer._u_flow = method(in_flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding, name='pooling')
             else:
                 print('layer not defined')
                 exit()
-            flow = activate_function[layer.activate](flow)
+            layer._h_flow = activate_function[layer.activate](layer._u_flow)
             if layer.dropout:
-                flow = tf.nn.dropout(flow, self.drop_prob)
-        self.output = flow
+                layer._h_flow = tf.nn.dropout(layer.get_flow(), self.drop_prob)
+
+        self.output = layers[-1].get_flow()
         self.saver = tf.train.Saver()
 
     def __getitem__(self, item):
@@ -158,12 +185,12 @@ class NeuralNetwork:
         return len(self._layers)
 
     def query(self, input, model_path='./'):
-        '''
+        """
         function query(input, model_path): 질의 메서드입니다.
         :param input: 뉴럴 네트워크에 입력할 값입니다(n-d tensor혹은 그로 컨버팅 가능한 인스턴스).
         :param model_path: 모델 파일이 저장된 경로입니다. 기본값은 현재 경로입니다
         :return: 뉴럴 네트워크에서 input을 계산한 값이 반환됩니다
-        '''
+        '"""
         with tf.Session() as sess:
             self.saver.restore(sess, model_path+'model.ckpt')
             return sess.run(self.output, feed_dict={self.input_data: [input], self.drop_prob: 1.}).reshape(-1).tolist()
@@ -230,5 +257,3 @@ class NeuralNetwork:
                     })
                 train_writter.add_summary(summary)
             self.saver.save(sess, model_path+'model.ckpt')
-
-            print('train progress finished')
