@@ -4,6 +4,8 @@ import numpy
 import gzip
 import os
 import struct
+import pickle
+import tarfile
 # 전처리 (dataset rank = 1)
 
 
@@ -19,8 +21,9 @@ def data_normalization(data_set, method='min-max', rnge=(0, 1)):
         max_old = max([max(sample) for sample in data_set])
         min_old = min([min(sample) for sample in data_set])
 
-        data_set = np.array(data_set)
-        return  data_set/(max_old-min_old) * (max(rnge)-min(rnge)) + min(rnge)
+        if not isinstance(data_set, np.ndarray):
+            data_set = np.array(data_set)
+        return data_set/(max_old-min_old) * (max(rnge)-min(rnge)) + min(rnge)
 
     elif method == 'z-core':
         pass
@@ -77,3 +80,39 @@ def mnist_download(dataset_dir='.', flatten=True):
     test_dataset = [[test_data[i], test_label[i]] for i in range(len(test_data))]
 
     return train_dataset, test_dataset
+
+
+def cifar10_download(dataset_dir='.'):
+    download_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+
+    file_name = 'cifar-10-python.tar.gz'
+    file_path = dataset_dir + '/' + file_name
+
+    if not os.path.exists(file_path):
+        urllib.request.urlretrieve(download_url, file_path)
+
+    ext = [ 'cifar-10-batches-py/data_batch_1',
+            'cifar-10-batches-py/data_batch_2',
+            'cifar-10-batches-py/data_batch_3',
+            'cifar-10-batches-py/data_batch_4',
+            'cifar-10-batches-py/data_batch_5',
+            'cifar-10-batches-py/test_batch']
+
+    dataset = []
+    with tarfile.open(file_path, 'r:gz') as tar:
+        for file in tar.getnames():
+            if file in ext:
+                with tar.extractfile(file) as f:
+                    dataset.append(pickle.load(f, encoding='bytes'))
+
+    train_data = []
+    test_data = []
+    for batch in dataset:
+        data = np.reshape(data_normalization(batch[b'data'], rnge=(0.01, 0.99)), [-1, 32, 32, 3])
+        label = one_hot(batch[b'labels'], (0, 10), value=(0.01, 0.99))
+        if batch[b'batch_label'] == b'testing batch 1 of 1':
+            test_data += [[data[i], label[i]] for i in range(len(data))]
+        else:
+            train_data += [[data[i], label[i]] for i in range(len(data))]
+
+    return train_data, test_data
