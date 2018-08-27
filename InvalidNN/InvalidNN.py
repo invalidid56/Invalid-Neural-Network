@@ -1,8 +1,8 @@
-'''
+"""
 Invalid Neural Network v 0.02
 tensorflow 에서 신경망을 빠르게 작성하고, 편하게 테스트하기 위한 모듈입니다.
 Layer과 이를 상속받는 클래스들로 레이어를 정의하고, NeuralNetwork 객체를 만드십시오.
-'''
+"""
 
 import tensorflow as tf
 import tensorflow.contrib as tf_c

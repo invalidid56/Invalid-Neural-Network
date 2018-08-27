@@ -26,6 +26,3 @@ mnist_convNet.train(
 )
 
 print(mnist_convNet.query(training_data[0][0]), training_data[0][1])
-
-
-

@@ -9,8 +9,8 @@ layers = [
     inv.Conv2D('Conv_2', 'relu', 64, [5, 5], [1, 1], 'same'),
     inv.Pooling('Pooling_2', 'max', [3, 3], [2, 2], 'same'),
     inv.Conv2D('Conv_3', 'relu', 128, [3, 3], [1, 1], 'same'),
-    inv.Conv2D('Conv_3', 'relu', 128, [3, 3], [1, 1], 'same'),
-    inv.Conv2D('Conv_3', 'relu', 128, [3, 3], [1, 1], 'same'),
+    inv.Conv2D('Conv_4', 'relu', 128, [3, 3], [1, 1], 'same'),
+    inv.Conv2D('Conv_5', 'relu', 128, [3, 3], [1, 1], 'same'),
     inv.Dense(name='Dense', activate_fn='sigmoid', units=384, dropout=True),
     inv.Dense('Softmax', 'softmax', 10)
 ]
@@ -22,4 +22,6 @@ cifar_net = inv.NeuralNetwork(layers, [32, 32, 3])
 cifar_net.train(train_data, 128, 'cross-entropy', 'adam', 1e-4, dropout_p=0.7, epoch=10000)
 
 acc = test.test_model(cifar_net, test_data)
-print('정확도: ' + acc)
+
+print(cifar_net.query(test_data[0][0]), test_data[0][1])
+print(acc)
