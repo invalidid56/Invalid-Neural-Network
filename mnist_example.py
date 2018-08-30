@@ -1,4 +1,4 @@
-from InvalidNN import invalidnn as inv
+from InvalidNN import invalidnn_new as inv
 from InvalidNN.utill import pretreatment
 from InvalidNN.utill import test
 import gzip
@@ -10,8 +10,15 @@ sample_network = [
     inv.Dense('fc_2', 'softmax', 10)
 ]
 
-mynet = inv.NeuralNetwork(sample_network, input=784)
+mynet = inv.NeuralNetwork(sample_network, [None, 784])
 
-mynet.train(train_dataset, 100, 'least-square', 'gradient-descent', 0.05, 10000, model_path='./', dropout_p=0.7)
-
-print(test.test_model(mynet, test_dataset))
+mynet.train(
+    train_dataset,
+    batch_size=100,
+    loss_fn='least-square',
+    optimizer='gradient-descent',
+    learning_rate=0.05,
+    epoch=5000,
+    model_path='.',
+    summary_path='./summary',
+    drop_p=0.7)

@@ -1,4 +1,6 @@
 import tensorflow as tf
+import tensorflow.contrib as tf_c
+from random import choice
 
 
 def mul(*args):
@@ -96,24 +98,25 @@ class NeuralNetwork(object):
         if isinstance(input_shape, int):
             input_shape = [input_shape]
         self.input = tf.placeholder(tf.float32, [*input_shape])
+        self.drop_p = tf.placeholder(tf.float32)
 
         def init_layers(nodes, in_flow):
             flow = in_flow
             for l, layer in enumerate(nodes):
                 if isinstance(layer, list):
                     flow = sum([
-                        init_layers(sub_graph, flow) for sub_graph in layer
-                    ])  # 리스트 안에 리스트?
+                        init_layers(sub_graph, flow) for sub_graph in (layer if isinstance(layer[0], list) else [layer])
+                    ])
                     continue
 
                 elif isinstance(layer, Dense):
                     with tf.name_scope(layer.name) as scope:
                         if len(flow.get_shape().as_list()) > 2:
-                            flow = tf.reshape(in_flow, [-1, mul(*in_flow.get_shape().as_list()[-3:])])
+                            flow = tf.reshape(flow, [-1, mul(*flow.get_shape().as_list()[-3:])])
 
                         layer._weight = tf.Variable(
                             tf.random_normal([
-                                in_flow.get_shape().as_list()[-1], layer.units
+                                flow.get_shape().as_list()[-1], layer.units
                             ]) / tf.sqrt(float(layer.units) / (2 if layer.activate_fn == 'relu' else 1)),
                             name='weight',
                             trainable=True
@@ -130,7 +133,7 @@ class NeuralNetwork(object):
 
                         layer._filter = tf.Variable(
                             tf.random_normal([
-                                *layer.filter_shape, in_flow.get_shape().as_list()[-1], layer.filters
+                                *layer.filter_shape, flow.get_shape().as_list()[-1], layer.filters
                             ]) / tf.sqrt(float(layer.filters) / (2 if layer.activate_fn == 'relu' else 1)),
                             name="filter",
                             trainable=True
@@ -149,6 +152,7 @@ class NeuralNetwork(object):
                         elif layer.pooling == 'avg':
                             method = tf.nn.avg_pool
                         else:
+                            method = None
                             print('Pooling Method Not Defined')
                             exit()
                         flow = method(flow, [1, *layer.size, 1], [1, *layer.stride, 1], layer.padding,  name='pooling')
@@ -158,4 +162,62 @@ class NeuralNetwork(object):
 
                 flow = layer.activate_fn(flow)
 
+                if layer.dropout:
+                    flow = tf.nn.dropout(flow, self.drop_p)
+
             return flow
+
+        self.output = init_layers(layers, self.input)
+
+    def train(self, training_dataset, loss_fn, optimizer, learning_rate, batch_size, epoch, drop_p = 1.0, model_path='.', summary_path='.'):
+        # define placeholder
+        object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][-1])])
+
+        # define loss function
+        with tf.name_scope('loss') as scope:
+            if loss_fn == 'least-square':
+                loss = tf.reduce_mean(tf.square(object_output - self.output), name='least-square')
+            elif loss_fn == 'cross-entropy':
+                loss = -tf.reduce_sum(object_output * tf.log(tf.clip_by_value(self.output, 1e-30, 1.0)),
+                                      name='cross-entropy')
+            else:
+                loss = None
+                print('error : loss Function not defined')
+                exit()
+        tf.summary.scalar('loss', loss)
+
+        # define train optimizer
+        if optimizer == 'gradient-descent':
+            train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+        elif optimizer == 'adam':
+            train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+        elif optimizer == 'rms-prop':
+            train_step = tf.train.RMSPropOptimizer(learning_rate).minimize(loss)
+        else:
+            train_step = None
+            print('optimizer not defined')
+            exit()
+
+        #
+        init = tf.global_variables_initializer()
+        merged = tf.summary.merge_all()
+        self.saver = tf.train.Saver()
+
+        with tf.Session() as sess:
+            train_writer = tf.summary.FileWriter(summary_path + '', sess.graph)
+            sess.run(init)
+
+            for _ in range(epoch):
+                batch = []
+                for __ in range(batch_size):
+                    batch.append(choice(training_dataset))
+                x_batch = [b[0] for b in batch]
+                y_batch = [b[1] for b in batch]
+
+                summary, _ = sess.run([merged, train_step], feed_dict={
+                    self.input: x_batch,
+                    object_output: y_batch,
+                    self.drop_p: drop_p
+                })
+                train_writer.add_summary(summary)
+            self.saver.save(sess, model_path + '/' + 'model.ckpt')

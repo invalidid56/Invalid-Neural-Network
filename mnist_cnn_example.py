@@ -1,4 +1,4 @@
-from InvalidNN import invalidnn as inn
+from InvalidNN import invalidnn_new as inn
 from InvalidNN.utill import pretreatment
 
 training_data, testing_data = pretreatment.mnist_download(flatten=False)
@@ -12,17 +12,15 @@ layers = [
     inn.Dense('Softmax', 'softmax', 10)
 ]
 
-mnist_convNet = inn.NeuralNetwork(layers, [28, 28, 1])
+mnist_convNet = inn.NeuralNetwork(layers, [None, 28, 28, 1])
 
 mnist_convNet.train(
-    train_data=training_data,
+    training_dataset=training_data,
     batch_size=100,
-    loss_function='cross-entropy',
+    loss_fn='cross-entropy',
     optimizer='adam',
     learning_rate=1e-4,
     epoch=5000,
-    dropout_p=0.5,
-    model_path='./'
+    drop_p=0.5,
+    model_path='.'
 )
-
-print(mnist_convNet.query(training_data[0][0]), training_data[0][1])
