@@ -169,7 +169,9 @@ class NeuralNetwork(object):
 
         self.output = init_layers(layers, self.input)
 
-    def train(self, training_dataset, loss_fn, optimizer, learning_rate, batch_size, epoch, drop_p = 1.0, model_path='.', summary_path='.'):
+        self.saver = tf.train.Saver()
+
+    def train(self, training_dataset, loss_fn, optimizer, learning_rate, batch_size, epoch, drop_p=1.0, model_path='.', summary_path='.'):
         # define placeholder
         object_output = tf.placeholder(tf.float32, [None, len(training_dataset[0][-1])])
 
@@ -201,7 +203,6 @@ class NeuralNetwork(object):
         #
         init = tf.global_variables_initializer()
         merged = tf.summary.merge_all()
-        self.saver = tf.train.Saver()
 
         with tf.Session() as sess:
             train_writer = tf.summary.FileWriter(summary_path + '', sess.graph)
@@ -232,4 +233,4 @@ class NeuralNetwork(object):
                 self.input: [input_data],
                 self.drop_p: 1.
             }
-            return sess.run(self.output, feed)
+            return sess.run(self.output, feed).tolist()
