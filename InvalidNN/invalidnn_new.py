@@ -221,3 +221,15 @@ class NeuralNetwork(object):
                 })
                 train_writer.add_summary(summary)
             self.saver.save(sess, model_path + '/' + 'model.ckpt')
+
+    def query(self, input_data, model_path=None):
+        with tf.Session() as sess:
+            if model_path:
+                self.saver.restore(sess, model_path+'/model.ckpt')
+            else:
+                sess.run(tf.global_variables_initializer())
+            feed = {
+                self.input: [input_data],
+                self.drop_p: 1.
+            }
+            return sess.run(self.output, feed)
