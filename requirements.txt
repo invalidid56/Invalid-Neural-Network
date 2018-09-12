@@ -6,4 +6,4 @@ numpy == 1.15.0
 
 # InvalidNN/lol.py: 1
 # cifar_example.py: 3
-tensorflow == 1.9.0
+tensorflow

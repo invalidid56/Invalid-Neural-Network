@@ -43,6 +43,8 @@ class Dense(Layer):
     """
     전결합층 클래스
     """
+    layer_type = 'Dense'
+
     def __init__(self, name, activate_fn, units, dropout=False):
         super().__init__(name, activate_fn, dropout)  # init super
         self.units = units
@@ -50,7 +52,7 @@ class Dense(Layer):
 
 class Conv2D(Layer):
     """
-    2D 입력에 대한 합성곱층 레이어 클래스입니다.
+    합성곱층(2D) 클래스
     :param filters: 레이어가 사용할 필터의 개수를 설정합니다(감지할 특성, 사용할 커널)
     :param filter_shape: 레이어가 사용할 필터의 모양을 설정합니다([height, weight])
     :param stride: 필터에 적용할 보폭(stride)를 설정합니다([h_stride, w_stride])
