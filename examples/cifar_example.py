@@ -1,4 +1,4 @@
-from InvalidNN import invalidnn as inv
+from InvalidNN import invalidnn_new as inv
 from InvalidNN.utill import pretreatment
 from InvalidNN.utill import test
 
