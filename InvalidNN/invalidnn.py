@@ -1,37 +1,33 @@
 # Package Import
+import tensorflow as tf
 
 # Module Import
-import math
+from multipledispatch import dispatch
 from abc import *
 
 # Init Layers
 
 
 class Node(object):
-    def __init__(self):
-        pass
-
-
-class CompressLayer(Node):
-    def __init__(self):
-        super().__init__()
-        self.in_flows = None
-
-
-class Sum(CompressLayer):
-    pass
-
-
-class Concat(CompressLayer):
-    pass
+    def __init__(self, name, connected: list=None):
+        self.name: str = name
+        if not connected:
+            self.connected_node: list = connected[:-1]
+            self.gathering: str = connected[-1]  # TODO: 커스텀 자유도 높이기
+        else:
+            self.connected_node = []  # fully-connected to previous nodes
+            self.gathering = 'sum'
 
 
 class Layer(Node):
-    def __init__(self, name: str, activate: str, dropout: bool):
-        super().__init__()
+    def __init__(self, name: str, activate: function, dropout: bool = False, connected: list=None):
+        super().__init__(name=name, connected=connected)
         self.name = name
-        self.activate = activate.upper()
+        self.activate = activate
         self.dropout = dropout
+
+        self.weight = None  # TODO: 생성 메서드 커스텀 추가
+        self.bias = None
 
     def __str__(self):
         pass
@@ -40,21 +36,23 @@ class Layer(Node):
 class Dense(Layer):
     category = 'Dense'
 
-    def __init__(self, name, activate, units, dropout=False):
-        super().__init__(name, activate, dropout)
+    def __init__(self, name, activate, units, dropout=False, connected=None):
+        super().__init__(name=name, activate=activate, dropout=dropout, connected=connected)  # TODO: str 활성화함수 입력도 함수로 변환
         self.units = units
 
 
-class Shortcut(Layer):
+class Shortcut(Node):  # TODO: 감이 안잡힌당께
     flows = {}
-    pass
+
+    def __init__(self, name):
+        super().__init__(name=name)
 
 
 class WrongConnection(Exception):
     pass
 
 
-class NeuralNetwork(object):
+class NeuralNetwork(metaclass=ABCMeta):
     def __init__(self, layers, input_shape):
         pass
 
@@ -62,12 +60,15 @@ class NeuralNetwork(object):
     def init_layers(self, layers, input_shape):
         pass
 
+    @abstractmethod
     def query(self):
         pass
 
+    @abstractmethod
     def train(self):
         pass
 
+    @abstractmethod
     def accuracy(self):
         pass
 
@@ -80,7 +81,29 @@ class NeuralNetwork(object):
 
 class TFNetwork(NeuralNetwork):
     def init_layers(self, layers, input_shape):
-        pass
+        @dispatch()
+        def init(layer, in_flow):
+            pass
+
+        @dispatch(Dense)
+        def init(layer, in_flow):
+            # TODO: 초기화 메서드에 자유를! 자비에 말고도 사용자 지정을 받아오게 하자, 아예 각각 메서드들을 따로 모듈화해서 구현하고 이를 사용자가 직접 오버라이딩 할 수 있게 해도
+            layer.weight = tf.truncated_normal(
+
+            )
+            layer.bias = tf.truncated_normal(
+
+            )
+            if isinstance(in_flow, list):
+                if layer.gathering == 'sum':
+                    for flow in in_flow:
+
+                result = None # TODO: Sum inputs
+            else:
+                result = layer.activate(
+                    tf.matmul(in_flow, layer.weight) + layer.bias
+                )
+            return result
 
 
 class PTNetwork(NeuralNetwork):
