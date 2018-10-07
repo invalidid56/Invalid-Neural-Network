@@ -112,3 +112,10 @@ checkpoint
 *.data-00000-of-00001
 *.index
 *.meta
+examples/t10k-images-idx3-ubyte\.gz
+
+examples/t10k-labels-idx1-ubyte\.gz
+
+examples/train-images-idx3-ubyte\.gz
+
+examples/train-labels-idx1-ubyte\.gz
