@@ -11,4 +11,5 @@ sample_network = [
     inv.Dense('fc_4', tf.nn.softmax, 10, gathering='sum')
 ]
 
-mynet = inv.TFNetwork(sample_network, [None, 784])
+mynet = inv.TFNetwork(sample_network, [784])
+
