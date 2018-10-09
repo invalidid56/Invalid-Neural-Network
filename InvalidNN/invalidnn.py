@@ -45,8 +45,18 @@ class Layer(Node):
 class Dense(Layer):
     def __init__(self, name, activate, units, dropout=False, gathering=None):
         super().__init__(name=name, activate=activate, dropout=dropout, gathering=gathering)
+
         self.units = units
 
+
+class Conv2D(Layer):
+    def __init__(self, name, activate, filters, filter_size, stride, padding: str, dropout=False, gathering=None):
+        super().__init__(name=name, activate=activate, dropout=dropout, gathering=gathering)
+
+        self.filters = filters
+        self.filter_size = filter_size
+        self.stride = [1, *stride, 1]  # TODO: 예외처리-사이즈가 반복가 아닐 때
+        self.padding = padding.upper()
 
 # Network Class
 
@@ -71,34 +81,59 @@ class Network(metaclass=ABCMeta):
 
 class TFNetwork(Network):
     def __init__(self, layers, input_shape):
+        self.input = None
         self.output = self.init_layers(layers, input_shape)
         # TODO: Dropout, Summary 추가
 
     def init_layers(self, layers, input_shape):
         @dispatch(Dense, object)
-        def init(layer, in_flow):
+        def init(node: Dense, in_flow):
             # 개더링 기반 입력 플로우 조정
             if isinstance(in_flow, list):
-                if layer.gathering == 'sum':
+                if node.gathering == 'sum':
                     temp = in_flow
                     in_flow = in_flow[0]
-                elif layer.gathering == 'concat':
+                elif node.gathering == 'concat':
                     in_flow = tf.concat(1, in_flow)
                 else:
                     exit()  # TODO: 예외처리, 개더링 명시 X
 
             # 파라미터 초기화
-            layer.weight = tf.truncated_normal(shape=[
-                in_flow.get_shape().as_list()[-1], layer.units
-            ]) / tf.sqrt(float(layer.units))
-            layer.bias = tf.truncated_normal(shape=[layer.units])
+            node.weight = tf.Variable(tf.truncated_normal(shape=[
+                in_flow.get_shape().as_list()[-1], node.units
+            ]) / tf.sqrt(float(layer.units))/2 if node.activate == tf.nn.relu else 1)
+            node.bias = tf.Variable(tf.truncated_normal(shape=[node.units]))
 
             # 레이어 출력값 반환
             def result(x):
-                return layer.activate(tf.matmul(x, layer.weight)+layer.bias)
-            return result(in_flow) if layer.gathering != 'sum' else sum([result(i) for i in temp])
+                return node.activate(tf.matmul(x, layer.weight)+layer.bias)
+            return result(in_flow) if node.gathering != 'sum' else sum([result(i) for i in temp])
 
-        flow = tf.placeholder(tf.float32, shape=[None, *input_shape])
+        @dispatch(Conv2D)
+        def init(node: Conv2D, in_flow):
+            # 개더링 기반 입력 플로우 조정
+            if isinstance(in_flow, list):
+                if node.gathering == 'sum':
+                    temp = in_flow
+                    in_flow = in_flow[0]
+                elif node.gathering == 'concat':
+                    in_flow = tf.concat(2, in_flow)
+                else:
+                    exit()  # TODO: 예외처리, 개더링 명시 X
+
+            # 파라미터 초기화
+            node.weight = tf.Variable(tf.truncated_normal(shape=[
+                *node.filter_size, in_flow.get_shape().as_list()[-1], node.filters
+            ])/tf.sqrt(float(node.filters))/2 if node.activate == tf.nn.relu else 1)
+            node.bias = tf.Variable(tf.random_normal(shape=[node.filters]), name='bias')
+
+            # 레이어 출력값 반환
+            def result(x):
+                return node.activate(tf.nn.conv2d(x, node.weight, node.stride, node.padding))
+            return result(in_flow) if node.gathering != 'sum' else sum([result(i) for i in temp])
+
+        self.input = tf.placeholder(tf.float32, shape=[None, *input_shape])
+        flow = self.input
         for layer in layers:
             if isinstance(layer, list):
                 flow = [init(node, flow) for node in layer]
@@ -112,17 +147,18 @@ class TFNetwork(Network):
 
         # define loss function
         with tf.name_scope('loss') as scope:
-            if loss_fn == 'least-square':
-                loss = tf.reduce_mean(tf.square(object_output - self.output), name='least-square')
+            if loss_fn == 'mse':
+                loss = tf.reduce_mean(tf.square(object_output - self.output), name='MSE-Loss')
             elif loss_fn == 'cross-entropy':
                 loss = -tf.reduce_sum(object_output * tf.log(tf.clip_by_value(self.output, 1e-30, 1.0)),
-                                      name='cross-entropy')
+                                      name='cross-entropy-Loss')
             else:
                 loss = None
                 print('error : loss Function not defined')
                 exit()
 
         # define train optimizer
+        print(loss)
         if optimize == 'gradient-descent':
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         elif optimize == 'adam':

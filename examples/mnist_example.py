@@ -3,7 +3,7 @@ from InvalidNN.utill import pretreatment
 import tensorflow as tf
 
 
-# train_dataset, test_dataset = pretreatment.mnist_download()
+train_dataset, test_dataset = pretreatment.mnist_download(dataset_dir='/home/invalidid/Datasets/MNIST')
 
 sample_network = [
     inv.Dense('fc_1', tf.nn.sigmoid, 200),
@@ -13,3 +13,4 @@ sample_network = [
 
 mynet = inv.TFNetwork(sample_network, [784])
 
+mynet.train('gradient-descent', 'mse', 10, 5, 0.05, train_dataset)
