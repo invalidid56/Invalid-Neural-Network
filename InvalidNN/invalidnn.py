@@ -58,6 +58,16 @@ class Conv2D(Layer):
         self.stride = [1, *stride, 1]  # TODO: 예외처리-사이즈가 반복가 아닐 때
         self.padding = padding.upper()
 
+
+class Pooling(Layer):
+    def __init__(self, name, pooling, size, stride, padding: str, activate=None, dropout=False, gathering=None):
+        super().__init__(name, activate, dropout, gathering)
+
+        self.pooling = pooling
+        self.size = [1, *size, 1]
+        self.stride = [1, *stride, 1]
+        self.padding = padding.upper()
+
 # Network Class
 
 
@@ -81,6 +91,7 @@ class Network(metaclass=ABCMeta):
 
 class TFNetwork(Network):
     def __init__(self, layers, input_shape):
+        self.layers = layers
         self.input = None
         self.output = self.init_layers(layers, input_shape)
         # TODO: Dropout, Summary 추가
@@ -109,7 +120,7 @@ class TFNetwork(Network):
                 return node.activate(tf.matmul(x, layer.weight)+layer.bias)
             return result(in_flow) if node.gathering != 'sum' else sum([result(i) for i in temp])
 
-        @dispatch(Conv2D)
+        @dispatch(Conv2D, object)
         def init(node: Conv2D, in_flow):
             # 개더링 기반 입력 플로우 조정
             if isinstance(in_flow, list):
@@ -130,6 +141,26 @@ class TFNetwork(Network):
             # 레이어 출력값 반환
             def result(x):
                 return node.activate(tf.nn.conv2d(x, node.weight, node.stride, node.padding))
+            return result(in_flow) if node.gathering != 'sum' else sum([result(i) for i in temp])
+
+        @dispatch(Pooling, object)
+        def init(node: Pooling, in_flow):
+            # 개더링 기반 입력 플로우 조정
+            if isinstance(in_flow, list):
+                if node.gathering == 'sum':
+                    temp = in_flow
+                    in_flow = in_flow[0]
+                elif node.gathering == 'concat':
+                    in_flow = tf.concat(2, in_flow)
+                else:
+                    exit()  # TODO: 예외처리, 개더링 명시 X
+
+            # 파라미터 초기화
+
+            # 레이어 출력값 반환
+            def result(x):
+                return node.activate(node.pooling(x, node.size, node.stride, node.padding))
+
             return result(in_flow) if node.gathering != 'sum' else sum([result(i) for i in temp])
 
         self.input = tf.placeholder(tf.float32, shape=[None, *input_shape])
@@ -191,6 +222,9 @@ class TFNetwork(Network):
     def accuracy(self, test_dataset):
         pass
 
-    def __call__(self, input_data):
+    def __call__(self, input_data, model_path=None):
+        pass
+
+    def __str__(self):
         pass
 
