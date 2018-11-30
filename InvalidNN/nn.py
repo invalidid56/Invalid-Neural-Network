@@ -41,6 +41,7 @@ class NeuralNetwork(Graph):
         pass  # Query To Network
 
 
+'''
 class TFNeuralNetwork(Graph):
     def __init__(self, name, scope, nodes, input_shape):
         super().__init__(nodes, name, scope)
@@ -48,3 +49,4 @@ class TFNeuralNetwork(Graph):
 
     def init_layers(self, layers, input_shape):
         pass
+'''
