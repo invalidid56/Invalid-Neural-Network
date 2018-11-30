@@ -1,6 +1,6 @@
 <!-- $theme: default -->
 
-Invalid Neural Network: InvalidNN v 0.2 edited ny nonameP
+Invalid Neural Network: InvalidNN v 0.2 edited by nonameP
 
 ===
 
