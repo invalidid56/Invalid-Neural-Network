@@ -1,8 +1,7 @@
 <!-- $theme: default -->
 
-Invalid Neural Network: InvalidNN v 0.2
+Invalid Neural Network: InvalidNN v 0.2 edited ny nonameP
 
-edited ny nonameP
 ===
 
 What Is This?
