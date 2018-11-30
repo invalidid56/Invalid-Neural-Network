@@ -1,11 +1,8 @@
 # Import
 import tensorflow as tf
-import torch
 from multipledispatch import dispatch
 from abc import *
 from random import choice
-
-import math
 
 
 def variable_summary(var: tf.Tensor):
