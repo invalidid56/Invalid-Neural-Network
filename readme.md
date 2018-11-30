@@ -1,5 +1,4 @@
 <!-- $theme: default -->
-
 Invalid Neural Network: InvalidNN v 0.2 edited by nonameP
 
 ===
