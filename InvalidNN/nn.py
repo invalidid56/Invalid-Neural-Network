@@ -1,39 +1,41 @@
 from InvalidNN.core import *
 from InvalidNN.utill.summary import variable_summary
 import tensorflow as tf  # TODO: TORCH
+import numpy as np
 import multipledispatch
 
 
 ACTIVATE = {
     'relu': tf.nn.relu,
-    'softmax': tf.nn.softmax
+    'softmax': tf.nn.softmax,
+    'sigmoid': tf.nn.sigmoid
 }
 
 
 class Layer(Node):
-    def __init__(self, name, scope, activate, dropout=False):
-        super().__init__(name, scope)
+    def __init__(self, name, upper, activate, dropout=False):
+        super().__init__(name, upper)
         self.activate = ACTIVATE[activate]
         self.dropout = dropout
 
 
 class Dense(Layer):
-    def __init__(self, name, scope, activate, units, dropout=False):
-        super().__init__(name, scope, activate, dropout)
+    def __init__(self, name, upper, activate, units, dropout=False):
+        super().__init__(name, upper, activate, dropout)
         self.units = units
         self.weight = None
         self.bias = None
 
     def func(self, k):
         act = self.activate(
-            tf.matmul(self.weight, k) + self.bias
+            tf.matmul(k, self.weight) + self.bias
         )
-        return act if not self.dropout else tf.nn.dropout(act, keep_prob=self.scope.drop_p)
+        return act  # if not self.dropout else tf.nn.dropout(act, keep_prob=self.upper.drop_p)
 
 
 class Softmax(Layer):
-    def __init__(self, name, scope, activate=tf.nn.softmax, dropout=False):
-        super().__init__(name, scope, activate, dropout)
+    def __init__(self, name, upper, activate='softmax', dropout=False):
+        super().__init__(name, upper, activate, dropout)
 
     def func(self, k):
         return self.activate(k)
@@ -59,8 +61,8 @@ class NeuralNetwork(Graph):
 
 
 class TFNeuralNetwork(NeuralNetwork):
-    def __init__(self, layers, name, scope, nodes, input_shape: (list, tuple)):
-        super().__init__(nodes, name, scope)
+    def __init__(self, layers, name, upper, input_shape: (list, tuple)):
+        super().__init__(layers, name, upper)
         self._layers = layers
         self.drop_p = tf.placeholder(tf.float32)
         self.input_placeholder = tf.placeholder(shape=[None, *input_shape], dtype=tf.float32)
@@ -78,7 +80,8 @@ class TFNeuralNetwork(NeuralNetwork):
                     ]) / tf.sqrt(float(node.units)) / (2 if node.activate == tf.nn.relu else 1)))
                     variable_summary(node.weight)
                 with tf.name_scope('bias'):
-                    node.bias = tf.Variable(tf.truncated_normal(dtype=tf.float32, shape=[node.units]))
+                    node.bias = tf.Variable(tf.truncated_normal(dtype=tf.float32,
+                                                                shape=[node.units]))
                     variable_summary(node.bias)
                 activate = node(x)
                 variable_summary(activate)
@@ -140,11 +143,10 @@ class TFNeuralNetwork(NeuralNetwork):
             train_step = None
             print('optimizer not defined')
             exit()
-
         # TODO: Train Progress 출력
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
-            train_writer = tf.summary.FileWriter(summary_path + '', sess.graph)
+            train_writer = tf.summary.FileWriter(summary_path, sess.graph)
 
             sess.run(init)
 
@@ -155,26 +157,24 @@ class TFNeuralNetwork(NeuralNetwork):
                     x, y = next(train_data_generator)
                     x_batch.append(x)
                     y_batch.append(y)
-
                 _, summary = sess.run([train_step, merged], feed_dict={
                     self.input_placeholder: x_batch,
                     object_output: y_batch,
                     self.drop_p: drop_p
                 })
-
                 if (step % 10) == 0:
                     summary, acc = sess.run([merged, accuracy], feed_dict={
-                            self.input_placeholder: x_batch,
+                            self.input_placeholder: np.zeros([10, 2048], dtype=float),
                             object_output: y_batch,
                             self.drop_p: drop_p
                         })
 
-                    if (step % 1000) == 0:
-                        pass
-                    train_writer.add_summary(summary)
+                if (step % 1000) == 0:
+                    pass
+                train_writer.add_summary(summary, step)
 
     def accuracy(self, test_data_generator):
-        pass
+        return 0
 
     def func(self, input_data):
-        pass
+        return 0
