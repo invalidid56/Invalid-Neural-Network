@@ -5,7 +5,8 @@ import multipledispatch
 
 
 ACTIVATE = {
-    'relu': tf.nn.relu
+    'relu': tf.nn.relu,
+    'softmax': tf.nn.softmax
 }
 
 
@@ -28,6 +29,14 @@ class Dense(Layer):
             tf.matmul(self.weight, k) + self.bias
         )
         return act if not self.dropout else tf.nn.dropout(act, keep_prob=self.scope.drop_p)
+
+
+class Softmax(Layer):
+    def __init__(self, name, scope, activate=tf.nn.softmax, dropout=False):
+        super().__init__(name, scope, activate, dropout)
+
+    def func(self, k):
+        return self.activate(k)
 
 
 class NeuralNetwork(Graph):
@@ -71,7 +80,16 @@ class TFNeuralNetwork(NeuralNetwork):
                 with tf.name_scope('bias'):
                     node.bias = tf.Variable(tf.truncated_normal(dtype=tf.float32, shape=[node.units]))
                     variable_summary(node.bias)
-            return node(x)
+                activate = node(x)
+                variable_summary(activate)
+            return activate
+
+        @dispatch(Softmax, object)
+        def init(node, x):
+            with tf.name_scope(node.name):
+                activate = node(x)
+                variable_summary(activate)
+            return activate
 
         # 그래프 연결
         for layer in layers:
@@ -154,4 +172,3 @@ class TFNeuralNetwork(NeuralNetwork):
 
     def func(self, input_data):
         pass
-
