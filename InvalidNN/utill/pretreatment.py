@@ -9,21 +9,16 @@ import tarfile
 # 전처리 (dataset rank = 1)
 
 
-def one_hot(data_set, range_of_data, value=(0, 1)):
-    return [
-        [value[1] if i==data else value[0] for i in range(*range_of_data)] for data in data_set
-    ]
+def one_hot(data, range_of_data, value=(0, 1)):
+    return [value[1] if i==data else value[0] for i in range(*range_of_data)]
 
 
-def data_normalization(data_set, method='min-max', rnge=(0, 1)):
-    result = []
+def data_normalization(data_gen, method='min-max', range=(0, 1), value=(0, 1)):
     if method == 'min-max':
-        max_old = max([max(sample) for sample in data_set])
-        min_old = min([min(sample) for sample in data_set])
-
-        if not isinstance(data_set, np.ndarray):
-            data_set = np.array(data_set)
-        return data_set/(max_old-min_old) * (max(rnge)-min(rnge)) + min(rnge)
+        for sample in data_gen:
+            if not isinstance(sample, np.ndarray):
+                sample = np.array(sample)
+            yield sample/(range[1]-range[0]) * (value[1]-value[0]) + value[0]
 
     elif method == 'z-core':
         pass
@@ -31,7 +26,6 @@ def data_normalization(data_set, method='min-max', rnge=(0, 1)):
         pass
     else:
         pass
-    return result
 
 
 def data_cleaning(data_set):
@@ -46,6 +40,7 @@ def mnist_download(dataset_dir='.', flatten=True):
         'test_img': 't10k-images-idx3-ubyte.gz',
         'test_lbl': 't10k-labels-idx1-ubyte.gz'
     }
+
     def download(file):
         filedir = dataset_dir+'/'+file
         if os.path.exists(filedir):
@@ -53,33 +48,22 @@ def mnist_download(dataset_dir='.', flatten=True):
         else:
             urllib.request.urlretrieve(download_url + file, filedir)
             return True
+
+    def make_gen(file_x, file_y):
+        file_x = os.path.join(dataset_dir, file_x)
+        file_y = os.path.join(dataset_dir, file_y)
+        with gzip.open(file_x, 'rb') as fx:
+            with gzip.open(file_y, 'rb') as fy:
+                for i, x in enumerate(fx):
+                    if i > 16:
+                        data = x.decompress()
+                        print(data)
+                        yield {0: data}
+
     for f in file.values():
         download(f)
 
-    def load_lbl(file):
-        file_path = dataset_dir + "/" + file
-        with gzip.open(file_path, 'rb') as f:
-            lbls = np.frombuffer(f.read(), np.uint8, offset=8)
-        return lbls
-
-    def load_img(file):
-        file_path = dataset_dir + "/" + file
-        with gzip.open(file_path, 'rb') as f:
-            imgs = np.frombuffer(f.read(), np.uint8, offset=16)
-        imgs = imgs.reshape(-1, 784)
-        return imgs
-
-    train_data = data_normalization(load_img(file['train_img']), rnge=(0.01, 0.99))
-    if not flatten:
-        train_data = train_data.reshape([-1, 28, 28, 1])
-    train_label = one_hot(load_lbl(file['train_lbl']), (0, 10), value=(0.01, 0.99))
-    test_data = data_normalization(load_img(file['test_img']), rnge=(0.01, 0.99))
-    test_label = one_hot(load_lbl(file['test_lbl']), (0, 10), value=(0.01, 0.99))
-
-    train_dataset = [[train_data[i], train_label[i]] for i in range(len(train_data))]
-    test_dataset = [[test_data[i], test_label[i]] for i in range(len(test_data))]
-
-    return train_dataset, test_dataset
+    return make_gen(file['train_img'], file['train_lbl']), make_gen(file['test_img'], file['test_lbl'])
 
 
 def cifar10_download(dataset_dir='.'):
@@ -116,3 +100,4 @@ def cifar10_download(dataset_dir='.'):
             train_data += [[data[i], label[i]] for i in range(len(data))]
 
     return train_data, test_data
+

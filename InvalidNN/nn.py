@@ -148,20 +148,26 @@ class TFNeuralNetwork(NeuralNetwork):
 
             sess.run(init)
 
-            for __ in range(epoch):
-                for step, x_batch, y_batch in enumerate(train_data_generator):
-                    _, summary = sess.run([train_step, merged], feed_dict={
-                        self.input_placeholder: x_batch,
-                        object_output: y_batch,
-                        self.drop_p: drop_p
-                    })
+            for step in range(epoch):
+                x_batch = []
+                y_batch = []
+                for _ in range(batch_size):
+                    x, y = next(train_data_generator)
+                    x_batch.append(x)
+                    y_batch.append(y)
 
-                    if (step % 10) == 0:
-                        summary, acc = sess.run([merged, accuracy],
-                                                feed_dict={
-                                                    self.input_placeholder: x_batch,
-                                                    object_output: y_batch
-                                                })
+                _, summary = sess.run([train_step, merged], feed_dict={
+                    self.input_placeholder: x_batch,
+                    object_output: y_batch,
+                    self.drop_p: drop_p
+                })
+
+                if (step % 10) == 0:
+                    summary, acc = sess.run([merged, accuracy], feed_dict={
+                            self.input_placeholder: x_batch,
+                            object_output: y_batch,
+                            self.drop_p: drop_p
+                        })
 
                     if (step % 1000) == 0:
                         pass
