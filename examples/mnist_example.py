@@ -10,3 +10,8 @@ print(next(train_dataset))
 print(next(train_dataset))
 
 print(next(train_dataset))
+
+print(next(train_dataset))
+print(next(train_dataset))
+print(next(train_dataset))
+print(next(train_dataset))

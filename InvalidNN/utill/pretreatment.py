@@ -1,5 +1,6 @@
 import numpy as np
 import urllib.request
+import struct
 import numpy
 import gzip
 import os
@@ -13,13 +14,9 @@ def one_hot(data, range_of_data, value=(0, 1)):
     return [value[1] if i==data else value[0] for i in range(*range_of_data)]
 
 
-def data_normalization(data_gen, method='min-max', range=(0, 1), value=(0, 1)):
+def data_normalization(sample, method='min-max', range_of_data=(0, 1), new_range=(0, 1)):
     if method == 'min-max':
-        for sample in data_gen:
-            if not isinstance(sample, np.ndarray):
-                sample = np.array(sample)
-            yield sample/(range[1]-range[0]) * (value[1]-value[0]) + value[0]
-
+        return (np.array(sample))/(range_of_data[1]-range_of_data[0]) * (new_range[1]-new_range[0]) + new_range[0]
     elif method == 'z-core':
         pass
     elif method == 'decimal-scaling':
@@ -53,12 +50,15 @@ def mnist_download(dataset_dir='.', flatten=True):
         file_x = os.path.join(dataset_dir, file_x)
         file_y = os.path.join(dataset_dir, file_y)
         with gzip.open(file_x, 'rb') as fx:
+            zero, data_type, dims = struct.unpack('>HBB', fx.read(4))
+            fx_shape = tuple(struct.unpack('>I', fx.read(4))[0] for d in range(dims))
             with gzip.open(file_y, 'rb') as fy:
-                for i, x in enumerate(fx):
-                    if i > 16:
-                        data = x.decompress()
-                        print(data)
-                        yield {0: data}
+                fy.read(8)
+                for i in range(fx_shape[0]):
+                    data = data_normalization(np.fromstring(fx.read(fx_shape[1]*fx_shape[2]), dtype=np.uint8),
+                                              range_of_data=(0, 256), new_range=(0.01, 0.99))
+                    label = one_hot(np.fromstring(fy.read(1), dtype=np.uint8)[0], (0, 9), value=(0.01, 0.99))
+                    yield (data, label)
 
     for f in file.values():
         download(f)
