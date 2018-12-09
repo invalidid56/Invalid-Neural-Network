@@ -18,10 +18,12 @@ class MetaNode(metaclass=ABCMeta):
 
 
 class Node(MetaNode):
-    def __init__(self, name=None, scope=None):
+    def __init__(self, name=None, upper=None):
         super().__init__()
-        self.scope = scope
+        self.upper = upper
         self.name = name
+        if upper and isinstance(upper, Graph):
+            upper.add_node(self)
 
     def func(self, k):
         return k
@@ -38,8 +40,8 @@ class Node(MetaNode):
 
 
 class CompressNode(Node):
-    def __init__(self, name=None, scope=None):
-        super().__init__(name, scope)
+    def __init__(self, name=None, upper=None):
+        super().__init__(name, upper)
 
     def func(self, *args):
         return [*args]
@@ -49,12 +51,15 @@ class CompressNode(Node):
 
 
 class Graph(Node):
-    def __init__(self, nodes, name=None, scope=None):
-        super().__init__(name, scope)
-        self._nodes = nodes
+    def __init__(self, name=None, upper=None):
+        super().__init__(name, upper)
+        self._nodes = None
 
     def func(self, k):
         flow = k
         for node in self._nodes:
             flow = node.__call__(flow)
         return flow
+
+    def add_node(self, other):
+        self._nodes.append(other)
