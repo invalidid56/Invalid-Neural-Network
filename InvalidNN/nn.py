@@ -33,14 +33,6 @@ class Dense(Layer):
         return act  # if not self.dropout else tf.nn.dropout(act, keep_prob=self.upper.drop_p)
 
 
-class Softmax(Layer):
-    def __init__(self, name, upper, activate='softmax', dropout=False):
-        super().__init__(name, upper, activate, dropout)
-
-    def func(self, k):
-        return self.activate(k)
-
-
 class NeuralNetwork(Graph):
     @abstractmethod
     def init_layers(self, layers, input_shape):
@@ -61,12 +53,16 @@ class NeuralNetwork(Graph):
 
 
 class TFNeuralNetwork(NeuralNetwork):
-    def __init__(self, layers, name, upper, input_shape: (list, tuple)):
-        super().__init__(layers, name, upper)
-        self._layers = layers
+    def __init__(self, name, upper, input_shape: (list, tuple)):
+        super().__init__(name, upper)
+        self._layers = None
+        self.output = None
         self.drop_p = tf.placeholder(tf.float32)
-        self.input_placeholder = tf.placeholder(shape=[None, *input_shape], dtype=tf.float32)
-        self.output = self.init_layers(self._layers, self.input_placeholder)
+        with tf.name_scope(name) as scope:
+            self.input_placeholder = tf.placeholder(shape=[None, *input_shape], dtype=tf.float32)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.submit_layers()
 
     def init_layers(self, layers, flow):
         # 초기화 메서드 정의
@@ -87,18 +83,15 @@ class TFNeuralNetwork(NeuralNetwork):
                 variable_summary(activate)
             return activate
 
-        @dispatch(Softmax, object)
-        def init(node, x):
-            with tf.name_scope(node.name):
-                activate = node(x)
-                variable_summary(activate)
-            return activate
-
         # 그래프 연결
         for layer in layers:
             flow = init(layer, flow)
 
         return flow
+
+    def submit_layers(self):
+        self.output = self.init_layers(self._layers, self.input_placeholder)
+        return self.output
 
     def train(self, optimize, loss_fn, batch_size, epoch, learning_rate, label_class,
               train_data_generator, validation_data_generator,

@@ -22,6 +22,8 @@ class Node(MetaNode):
         super().__init__()
         self.upper = upper
         self.name = name
+        if upper and isinstance(upper, Graph):
+            upper.add_node(self)
 
     def func(self, k):
         return k
@@ -49,12 +51,15 @@ class CompressNode(Node):
 
 
 class Graph(Node):
-    def __init__(self, nodes, name=None, upper=None):
+    def __init__(self, name=None, upper=None):
         super().__init__(name, upper)
-        self._nodes = nodes
+        self._nodes = None
 
     def func(self, k):
         flow = k
         for node in self._nodes:
             flow = node.__call__(flow)
         return flow
+
+    def add_node(self, other):
+        self._nodes.append(other)
