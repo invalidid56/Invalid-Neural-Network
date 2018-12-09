@@ -1,4 +1,7 @@
-def variable_summary(var: tf.Tensor):
+import tensorflow as tf
+
+
+def variable_summary(var):
     with tf.name_scope('summaries'):
         mean = tf.reduce_mean(var)
         tf.summary.scalar('mean', mean)
